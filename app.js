@@ -1,7 +1,16 @@
+var Chart = function() {
+    var domain_start = moment('today');
+    var domain_end = moment();
+    
+};
+
 Date.prototype.getWeek = function() {
     var onejan = new Date(this.getFullYear(), 0, 1);
     return Math.ceil((((this - onejan) / 86400000) + onejan.getDay() + 1) / 7);
 }
+
+// determine default domain
+var initialDomain = [];
 
 var md = function(n) { // makes dates ...
     var now = new Date().getTime();
