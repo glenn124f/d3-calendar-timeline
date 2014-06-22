@@ -47,19 +47,19 @@ var Chart = function(trackdata, elmid) {
     yScale.domain([0, 2]);
 
     // utilize built in axis for the days line.
-    var daysLine = d3.svg.axis()
-        .scale(xScale)
-        .orient('top')
-        .ticks(d3.time.days, 1)
-        .tickPadding(0)
-        .tickFormat(function(d) { return (['S', 'M', 'T', 'O', 'T', 'F', 'L'])[d.getDay()]; })
-        .tickSize(0);
+    // var daysLine = d3.svg.axis()
+    //     .scale(xScale)
+    //     .orient('top')
+    //     .ticks(d3.time.days, 1)
+    //     .tickPadding(0)
+    //     .tickFormat(function(d) { return (['S', 'M', 'T', 'O', 'T', 'F', 'L'])[d.getDay()]; })
+    //     .tickSize(0);
 
-    // initial appending needs to be done once only.
-    svg.append('g')
-        .attr('class', 'days-line')
-        .attr('transform', 'translate(0, ' + (calendarHeight - weekboxHeight - 5) + ')')
-        .call(daysLine);
+    // // initial appending needs to be done once only.
+    // svg.append('g')
+    //     .attr('class', 'days-line')
+    //     .attr('transform', 'translate(0, ' + (calendarHeight - weekboxHeight - 5) + ')')
+    //     .call(daysLine);
 
     // generates week boxes on the fly ...
     var generateWeeks = function() {
@@ -71,7 +71,7 @@ var Chart = function(trackdata, elmid) {
         while (start.isBefore(end)) {
             weeks.push({
                 start: moment(start).toDate(),
-                end: moment(start).hours(7*24).toDate()
+                weeknr: '' + moment(start).toDate().getWeek() + moment(start).toDate().getFullYear()
             });
             start.hours(7*24);
         }
@@ -95,44 +95,42 @@ var Chart = function(trackdata, elmid) {
         var weekBoxes = generateWeeks();
         var weekNrOffset = 90;
 
-        var weekElm = svg.selectAll('rect.week-boxes')
-            .data(weekBoxes)
-            .enter().append('g').attr('class', 'week-boxes');
+        var weeks = svg.selectAll('rect.week-boxes')
+            .data(weekBoxes);
+
+        var weekElm = weeks.enter().append('g').attr('class', 'week-boxes');
 
         weekElm.append('rect')
             .attr('x', function(d) { return xScale(d.start); })
             .attr('y', calendarHeight - weekboxHeight)
-            .attr('width', function(d) { return xScale(d.end) - xScale(d.start) - 4; })
+            .attr('width', function(d) { return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4; })
             .attr('height', weekboxHeight)
             .attr('fill', '#eee');
 
         weekElm.append('text')
+            .attr('class', 'box')
             .attr('x', function(d) { return xScale(d.start) + weekNrOffset; })
             .attr('y', calendarHeight - weekboxHeight + 20)
-            .attr('width', function(d) { return xScale(d.end) - xScale(d.start) - 4; })
+            .attr('width', function(d) { return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4; })
             .attr('height', weekboxHeight)
             .text(function(d) { return 'UGE ' + d.start.getWeek(); });
+
+        weekElm.append('text')
+            .attr('class', 'days')
+            .attr('x', function(d) { return xScale(d.start); })
+            .attr('y', calendarHeight - weekboxHeight - 5)
+            .attr('width', function(d) { return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4; })
+            .attr('height', 50)
+            .text('M T O T F L S');
+
 
         // axis panning from https://gist.github.com/phoebebright/3098488
         if (options.panned) {
             svg.selectAll('rect.step')
                 .transition()
                 .attr('x', function(d) { return xScale(d.start); });
-            
-            svg
-                .select('.days-line')
-                .transition()
-                .call(daysLine)
-                .selectAll('text')
-                .attr('x', 6);
-        } else {
-            // no transition on initial render
-            svg
-                .select('.days-line')
-                .call(daysLine)
-                .selectAll('text')
-                .attr('x', 6);
         }
+        weeks.exit().remove();
     };
 
     var panHandler = function(e) {
