@@ -5,7 +5,7 @@
 <script src="moment.js"></script>
 <script src="d3.js"></script>
 <style>
-.x-axis {
+.days-line {
     font-family: sans-serif;
     font-size: 90%;
 }
@@ -14,12 +14,24 @@
     font-weight: normal;
     font-size: 110%;
 }
+
+#calendar {
+    display: inline-block;
+    outline: 1px solid blue;
+}
+
+button {
+    height: 200px;
+    width: 70px;
+    vertical-align: bottom;
+    display: inline-block;
+}
 </style>
 </head>
 <body>
 <button id="pan-left">left</button>
+<span id="calendar"></span>
 <button id="pan-right">right</button>
-<br><br>
 <script src="app.js"></script>
 </body>
 </html>
