@@ -46,33 +46,19 @@ var Chart = function(trackdata, elmid) {
     xScale.domain([domainDefault.start, domainDefault.end]);
     yScale.domain([0, 2]);
 
-    // utilize built in axis for the days line.
-    // var daysLine = d3.svg.axis()
-    //     .scale(xScale)
-    //     .orient('top')
-    //     .ticks(d3.time.days, 1)
-    //     .tickPadding(0)
-    //     .tickFormat(function(d) { return (['S', 'M', 'T', 'O', 'T', 'F', 'L'])[d.getDay()]; })
-    //     .tickSize(0);
-
-    // // initial appending needs to be done once only.
-    // svg.append('g')
-    //     .attr('class', 'days-line')
-    //     .attr('transform', 'translate(0, ' + (calendarHeight - weekboxHeight - 5) + ')')
-    //     .call(daysLine);
-
     // generates week boxes on the fly ...
     var generateWeeks = function() {
         var weeks = [];
         var current = xScale.domain();
         // assumes domain is week aligned to a monday
-        var start = moment(current[0]).hours(-14*24);
-        var end = moment(current[1]).hours(14*24);
+        var start = moment(current[0]).hours(-7*24);
+        var end = moment(current[1]);
+
         while (start.isBefore(end)) {
-            weeks.push({
-                start: moment(start).toDate(),
-                weeknr: '' + moment(start).toDate().getWeek() + moment(start).toDate().getFullYear()
-            });
+            weeks.push(moment(start).toDate()); //{
+            //     start: moment(start).toDate(),
+            //     weeknr: '' + moment(start).toDate().getWeek() + moment(start).toDate().getFullYear()
+            // });
             start.hours(7*24);
         }
         return weeks;
@@ -95,31 +81,36 @@ var Chart = function(trackdata, elmid) {
         var weekBoxes = generateWeeks();
         var weekNrOffset = 90;
 
-        var weeks = svg.selectAll('rect.week-boxes')
-            .data(weekBoxes);
+        var weeks = svg.selectAll('g.week-boxes')
+            .data(weekBoxes, function(d) { return d.toString(); })
+            .attr('transform', function(d) { 
+                return 'translate(' + xScale(d) + ', ' + (calendarHeight - weekboxHeight) + ')';
+            });
 
-        var weekElm = weeks.enter().append('g').attr('class', 'week-boxes');
+        var weekElm = weeks.enter()
+            .append('g')
+            .attr('class', 'week-boxes')
+            .attr('transform', function(d) {
+                return 'translate(' + xScale(d) + ', ' + (calendarHeight - weekboxHeight) + ')';
+            });
 
         weekElm.append('rect')
-            .attr('x', function(d) { return xScale(d.start); })
-            .attr('y', calendarHeight - weekboxHeight)
-            .attr('width', function(d) { return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4; })
+            .attr('width', 246)
             .attr('height', weekboxHeight)
             .attr('fill', '#eee');
 
         weekElm.append('text')
             .attr('class', 'box')
-            .attr('x', function(d) { return xScale(d.start) + weekNrOffset; })
-            .attr('y', calendarHeight - weekboxHeight + 20)
-            .attr('width', function(d) { return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4; })
+            .attr('x', weekNrOffset)
+            .attr('y', 25)
+            .attr('width', 246)
             .attr('height', weekboxHeight)
-            .text(function(d) { return 'UGE ' + d.start.getWeek(); });
+            .text(function(d) { return 'UGE ' + d.getWeek(); });
 
         weekElm.append('text')
             .attr('class', 'days')
-            .attr('x', function(d) { return xScale(d.start); })
-            .attr('y', calendarHeight - weekboxHeight - 5)
-            .attr('width', function(d) { return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4; })
+            .attr('y', -5)
+            .attr('width', 246)
             .attr('height', 50)
             .text('M T O T F L S');
 
@@ -133,7 +124,7 @@ var Chart = function(trackdata, elmid) {
         weeks.exit().remove();
     };
 
-    var panHandler = function(e) {
+    self.panHandler = function(e) {
         var left = e.target.id === 'pan-left';
         var curr = xScale.domain();
         var shift = (7*24*60*60*1000) * (left?1:-1);
@@ -144,8 +135,8 @@ var Chart = function(trackdata, elmid) {
         update({panned: true});
     };
 
-    document.getElementById('pan-left').addEventListener('click', panHandler);
-    document.getElementById('pan-right').addEventListener('click', panHandler);
+    document.getElementById('pan-left').addEventListener('click', self.panHandler);
+    document.getElementById('pan-right').addEventListener('click', self.panHandler);
 
     // call update to render initial weeks
     update({});
