@@ -54,11 +54,12 @@ var Chart = function(trackdata, elmid) {
         var start = moment(current[0]).hours(-7*24);
         var end = moment(current[1]);
 
+        console.log('generateWeeks', start.toString(), start.toDate().getWeek(), end.toDate().getWeek());
         while (start.isBefore(end)) {
-            weeks.push(moment(start).toDate()); //{
-            //     start: moment(start).toDate(),
-            //     weeknr: '' + moment(start).toDate().getWeek() + moment(start).toDate().getFullYear()
-            // });
+            weeks.push({
+                start: moment(start).toDate(),
+                weeknr: '' + moment(start).toDate().getWeek() + moment(start).toDate().getFullYear()
+            });
             start.hours(7*24);
         }
         return weeks;
@@ -80,38 +81,54 @@ var Chart = function(trackdata, elmid) {
 
         var weekBoxes = generateWeeks();
         var weekNrOffset = 90;
+        var weekstart = function(d) { return xScale(d.start); };
+        var midweek = function (d) {
+            return xScale(moment(d.start).hours(3.5*24).toDate());
+        };
+
 
         var weeks = svg.selectAll('g.week-boxes')
-            .data(weekBoxes, function(d) { return d.toString(); })
-            .attr('transform', function(d) { 
-                return 'translate(' + xScale(d) + ', ' + (calendarHeight - weekboxHeight) + ')';
-            });
+            .data(weekBoxes, function(d) { return d.start; });
 
+        weeks.selectAll('rect').attr('x', weekstart);
+        weeks.selectAll('text.box').attr('x', midweek);
+        weeks.selectAll('text.datespan').attr('x', midweek);
+        weeks.selectAll('text.days').transition().attr('x', weekstart);
+
+        // we dont use transform on g because we want different animation behaviour for sub elements
         var weekElm = weeks.enter()
             .append('g')
-            .attr('class', 'week-boxes')
-            .attr('transform', function(d) {
-                return 'translate(' + xScale(d) + ', ' + (calendarHeight - weekboxHeight) + ')';
-            });
+            .attr('class', 'week-boxes');
 
         weekElm.append('rect')
-            .attr('width', 246)
+            .attr('x', weekstart)
+            .attr('y', calendarHeight - weekboxHeight)
+            .attr('width', function(d) { return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4; })
             .attr('height', weekboxHeight)
             .attr('fill', '#eee');
 
         weekElm.append('text')
             .attr('class', 'box')
-            .attr('x', weekNrOffset)
-            .attr('y', 25)
-            .attr('width', 246)
-            .attr('height', weekboxHeight)
-            .text(function(d) { return 'UGE ' + d.getWeek(); });
+            .attr('text-anchor', 'middle')
+            .attr('x', midweek)
+            .attr('y', calendarHeight - weekboxHeight + 27)
+            .text(function(d) { return 'UGE ' + moment(d.start).isoWeek(); });
+
+        weekElm.append('text')
+            .attr('class', 'datespan')
+            .attr('text-anchor', 'middle')
+            // mid week anchor
+            .attr('x', midweek)
+            .attr('y', calendarHeight - weekboxHeight + 48)
+            .text(function(d) { 
+                return moment(d.start).format('DD-MM-YYYY') + ' - ' + 
+                    moment(d.start).hours(6*24).format('DD-MM-YYYY'); 
+            });
 
         weekElm.append('text')
             .attr('class', 'days')
-            .attr('y', -5)
-            .attr('width', 246)
-            .attr('height', 50)
+            .attr('x', weekstart)
+            .attr('y', calendarHeight - weekboxHeight - 5)
             .text('M T O T F L S');
 
 
@@ -124,19 +141,19 @@ var Chart = function(trackdata, elmid) {
         weeks.exit().remove();
     };
 
-    self.panHandler = function(e) {
+    var panHandler = function(e) {
         var left = e.target.id === 'pan-left';
         var curr = xScale.domain();
-        var shift = (7*24*60*60*1000) * (left?1:-1);
-        curr[0].setTime(curr[0].getTime() - shift);
-        curr[1].setTime(curr[1].getTime() - shift);
-        xScale.domain(curr);
+        xScale.domain([
+            moment(curr[0]).hours((left?-1:1)*7*24).toDate(),
+            moment(curr[1]).hours((left?-1:1)*7*24).toDate()
+        ]);
 
         update({panned: true});
     };
 
-    document.getElementById('pan-left').addEventListener('click', self.panHandler);
-    document.getElementById('pan-right').addEventListener('click', self.panHandler);
+    document.getElementById('pan-left').addEventListener('click', panHandler);
+    document.getElementById('pan-right').addEventListener('click', panHandler);
 
     // call update to render initial weeks
     update({});
