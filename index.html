@@ -9,7 +9,29 @@
     font-family: sans-serif;
     font-size: 90%;
 }
-.week-boxes text.box {
+
+* {
+    padding: 0;
+    margin: 0;
+}
+
+rect.step[visibility="hidden"] {
+    visibility: hidden;
+}
+
+.week-boxes {
+    cursor: ew-resize; /* ie  */
+    cursor: -webkit-grab;
+    cursor: grab;
+}
+
+
+.scrollbox[dragging="true"] .week-boxes {
+    cursor: -webkit-grabbing;
+    cursor: grabbing;
+}
+
+.week-boxes text.weeknr-text {
     font-family: sans-serif;
     font-weight: normal;
     font-size: 110%;
@@ -28,7 +50,13 @@
 
 #calendar {
     display: inline-block;
-    outline: 1px solid blue;
+    background-color: white;
+    overflow: hidden;
+}
+
+body {
+    text-align:center;
+    background-color: skyblue;
 }
 
 button {
@@ -40,9 +68,7 @@ button {
 </style>
 </head>
 <body>
-<button id="pan-left">left</button>
 <span id="calendar"></span>
-<button id="pan-right">right</button>
 <script src="app.js"></script>
 </body>
 </html>

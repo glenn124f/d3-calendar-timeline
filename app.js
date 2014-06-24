@@ -1,9 +1,3 @@
-
-Date.prototype.getWeek = function() {
-    var onejan = new Date(this.getFullYear(), 0, 1);
-    return Math.ceil((((this - onejan) / 86400000) + onejan.getDay() + 1) / 7);
-}
-
 var data = (function() {
     var md = function(n) {
         return moment().hours(7*24).minutes(0).seconds(0).hours(-n*24).toDate();
@@ -34,14 +28,17 @@ var Chart = function(trackdata, elmid) {
     var weekboxHeight = 60;
 
     var domainDefault = {
-        start: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).hours(-24*7).toDate(),
-        end: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).hours(24*21).toDate()
+        start: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).hours(-24*7).toDate(),
+        end: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).hours(24*21).toDate()
     };
 
     var svg = d3.select('#' + elmid)
                  .append('svg')
                  .attr('width', calendarWidth)
-                 .attr('height', calendarHeight);
+                 .attr('height', calendarHeight)
+                 .append('g')
+                 .attr('class', 'scrollbox');
+
 
     svg.append('style').text("@font-face { font-family: 'glyphicons'; src: url('fonts/glyphicons-regular.eot'); src: url('fonts/glyphicons-regular.eot?#iefix') format('embeddedopentype'), url('fonts/glyphicons-regular.woff') format('woff'), url('fonts/glyphicons-regular.ttf') format('truetype'), url('fonts/glyphicons-regular.svg#glyphicons_halflingsregular') format('svg'); }");
 
@@ -52,6 +49,34 @@ var Chart = function(trackdata, elmid) {
     xScale.domain([domainDefault.start, domainDefault.end]);
     yScale.domain([0, 2]);
 
+    var initialX = null;
+    var dragHandler = function() {
+        if (initialX === null) {
+            d3.select('g.scrollbox').attr('dragging', 'true');
+            initialX = d3.event.sourceEvent.screenX;
+        }
+        var offset = initialX - d3.event.sourceEvent.screenX; 
+        if (d3.event.type === 'dragend') {
+            initialX = null;
+            var domain = xScale.domain();
+            // time/pix density 
+            var offsetTime = 4*7*24*60*60*1000/calendarWidth*offset;
+            var start = moment(domain[0]).milliseconds(offsetTime);
+            var end = moment(domain[1]).milliseconds(offsetTime);
+            d3.select('g.scrollbox').attr('dragging', null);
+            d3.select('g.scrollbox').attr('transform', 'translate(0, 0)');
+            xScale.domain([start.toDate(), end.toDate()]);
+            update({duration: 1});
+        } else {
+            d3.select('g.scrollbox').attr('transform', 'translate(' + -offset + ', 0)');
+        }
+    };
+
+    // this behavior is attached to the week boxes to allow dragging the timeline.
+    var dragBehavior = d3.behavior.drag()
+        .on('drag', dragHandler)
+        .on('dragend', dragHandler);
+
     var stepstart = function(d) { return xScale(d.start); };
     var stepwidth = function(d) { return xScale(d.end) - xScale(d.start) - 4; };
     var stepmidweek = function (d) {
@@ -61,19 +86,23 @@ var Chart = function(trackdata, elmid) {
         return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4;
     };
 
+    var stepstartTransform = function(d) { 
+        return 'translate(' + stepstart(d) + ', ' + (calendarHeight - weekboxHeight) + ')'; 
+    };
+
     // generates week boxes on the fly ...
     var generateWeeks = function() {
         var weeks = [];
         var current = xScale.domain();
-        // assumes domain is week aligned to a monday
-        var start = moment(current[0]).hours(-7*24);
-        var end = moment(current[1]);
 
-        console.log('generateWeeks', start.toString(), start.toDate().getWeek(), end.toDate().getWeek());
+        // add x weeks padding to the durrent domain, can be scrolled into view by drag
+        var weekPadding = 20; 
+        var start = moment(current[0]).isoWeekday(1).hours(0).minutes(0).seconds(0).hours(-24*7*weekPadding);
+        var end = moment(start).hours(24*7*(weekPadding*2+4));
+        console.log('start', start.toString());
         while (start.isBefore(end)) {
             weeks.push({
-                start: moment(start).toDate(),
-                weeknr: '' + moment(start).toDate().getWeek() + moment(start).toDate().getFullYear()
+                start: moment(start).toDate()
             });
             start.hours(7*24);
         }
@@ -86,41 +115,53 @@ var Chart = function(trackdata, elmid) {
 
     };
 
+    var clearExpanded = function() {
+        svg.selectAll('rect.step').style('opacity', 1);
+        svg.select('g.step-expand').remove();
+    };
+
     var clickStep = function(baseDataItem, i) {
         if (baseDataItem.collapsed && baseDataItem.collapsed.length > 0) {
-            var trackNr = baseDataItem.track === 0 ? 1 : 0; 
-            // fades other track
+            // fades other track completely
             svg.selectAll('rect.step')
-                .filter('[track="' + trackNr + '"]')
-                .transition()
-                .style('opacity', 0.1);
+                .filter('[track="' + (baseDataItem.track === 0 ? 1 : 0) + '"]')
+                .transition().duration(500)
+                .style('opacity', 0);
 
-            // new rect which will contain new 
-            var stepExpand = svg.select('g.step-expand')
-                .selectAll('rect.expand')
-                .data(baseDataItem.collapsed)
-                .enter();
+            svg.selectAll('rect.step')
+                .filter('[track="' + (baseDataItem.track === 0 ? 0 : 1) + '"]')
+                .transition().duration(100)
+                .attr('y', 0)
+                .each('end', function() {
 
-            stepExpand.append('rect')
-                .attr('class', 'expand')
-                .attr('x', function() { return stepstart(baseDataItem); })
-                .attr('y', function() { return baseDataItem.track * 50 + 15; })
-                .attr('width', function() { return stepwidth(baseDataItem); })
-                .attr('height', 30)
-                .attr('fill', 'purple');
+                    svg.append('g').attr('class', 'step-expand');
+                    var stepExpand = svg.select('g.step-expand')
+                        .selectAll('rect.expand')
+                        .data(baseDataItem.collapsed)
+                        .enter();
 
-            stepExpand.append('text')
-                .attr('x', function() { return stepstart(baseDataItem); })
-                .attr('y', function() { return baseDataItem.track * 50 + 15; })
-                .attr('style', 'font-family: \'glyphicons\'')
-                .text('\u0001')
+                    stepExpand.append('rect')
+                        .attr('class', 'expand')
+                        .attr('x', function() { return stepstart(baseDataItem); })
+                        .attr('y', 0)
+                        .attr('width', function() { return stepwidth(baseDataItem); })
+                        .attr('height', 30)
+                        .attr('fill', 'purple');
 
+                    stepExpand.append('text')
+                        .attr('x', function() { return stepstart(baseDataItem); })
+                        .attr('y', 0)
+                        .attr('style', 'font-family: \'glyphicons\'')
+                        .text('\u0001')
 
-            svg.selectAll('rect.expand')
-                .transition()
-                .attr('y', function() { return baseDataItem.track * 50 + 49; })
-                .attr('height', 100)
-                .attr('width', 500);
+                    svg.selectAll('rect.expand')
+                        .transition()
+                        .attr('y', 36)
+                        .attr('height', 100)
+                        .attr('width', 500);
+
+                    
+                });
         }
     };
 
@@ -131,7 +172,7 @@ var Chart = function(trackdata, elmid) {
             .attr('class', 'step')
             .attr('track', function(d) { return d.track; })
             .attr('x', stepstart)
-            .attr('y', function(d, i) { return d.track * 50 + 15; })
+            .attr('y', function(d, i) { return d.track * 50; })
             .attr('width', stepwidth)
             .attr('height', 30)
             .attr('fill', function(d) { return d.color; })
@@ -139,6 +180,8 @@ var Chart = function(trackdata, elmid) {
 
     // call after setting domain, to update visuals
     var update = function(options) {
+
+        clearExpanded();
 
         var weekBoxes = generateWeeks();
 
@@ -151,70 +194,58 @@ var Chart = function(trackdata, elmid) {
         var weeks = svg.selectAll('g.week-boxes')
             .data(weekBoxes, function(d) { return d.start; });
 
-        weeks.selectAll('rect').attr('x', stepstart);
-        weeks.selectAll('text.box').attr('x', stepmidweek);
-        weeks.selectAll('text.datespan').attr('x', stepmidweek);
-        weeks.selectAll('text.days').transition().attr('x', stepstart);
+        // weeks.selectAll('rect.background').attr('x', stepstart);
+        // weeks.selectAll('text.weeknr-text').attr('x', stepmidweek);
+        // weeks.selectAll('text.datespan').attr('x', stepmidweek);
+        // weeks.selectAll('text.days').transition().duration(options.duration || 250).attr('x', stepstart);
 
-        // we dont use transform on g because we want different animation behaviour for sub elements
+        svg.selectAll('rect.step')
+            .transition()
+            .duration(options.duration || 250)
+            .attr('x', stepstart);
+
+        svg.selectAll('g.week-boxes')
+            // .transition()
+            // .duration(options.duration || 250)
+            .attr('transform', stepstartTransform);
+
         var weekElm = weeks.enter()
             .append('g')
-            .attr('class', 'week-boxes');
+            .attr('class', 'week-boxes')
+            .attr('transform', stepstartTransform)
+            .call(dragBehavior);
 
         weekElm.append('rect')
-            .attr('x', stepstart)
-            .attr('y', calendarHeight - weekboxHeight)
-            .attr('width', stepweek)
+            .attr('class', 'background')
+            .attr('width', 246)
             .attr('height', weekboxHeight)
             .attr('fill', '#eee');
 
         weekElm.append('text')
-            .attr('class', 'box')
+            .attr('class', 'weeknr-text')
             .attr('text-anchor', 'middle')
-            .attr('x', stepmidweek)
-            .attr('y', calendarHeight - weekboxHeight + 27)
+            .attr('x', 125)
+            .attr('y', 27)
             .text(weeknrText);
 
         weekElm.append('text')
             .attr('class', 'datespan')
             .attr('text-anchor', 'middle')
-            .attr('x', stepmidweek)
-            .attr('y', calendarHeight - weekboxHeight + 48)
+            .attr('x', 125)
+            .attr('y', 48)
             .text(datespanText);
 
         weekElm.append('text')
             .attr('class', 'days')
-            .attr('x', stepstart)
-            .attr('y', calendarHeight - weekboxHeight - 5)
+            .attr('y', - 5)
             .text('M T O T F L S');
 
-        // axis panning from https://gist.github.com/phoebebright/3098488
-        if (options.panned) {
-            svg.selectAll('rect.step')
-                .transition()
-                .attr('x', function(d) { return xScale(d.start); });
-        }
         weeks.exit().remove();
     };
 
-    var panHandler = function(e) {
-        var left = e.target.id === 'pan-left';
-        var curr = xScale.domain();
-        xScale.domain([
-            moment(curr[0]).hours((left?-1:1)*7*24).toDate(),
-            moment(curr[1]).hours((left?-1:1)*7*24).toDate()
-        ]);
-
-        update({panned: true});
-    };
-
-    document.getElementById('pan-left').addEventListener('click', panHandler);
-    document.getElementById('pan-right').addEventListener('click', panHandler);
-
     // call update to render initial weeks
-    update({});
-    // add last to ensure it stacks ontop of others 
-    svg.append('g').attr('class', 'step-expand');
+    update({duration: 1});
+
 };
 
 var chart = new Chart(data, 'calendar');
