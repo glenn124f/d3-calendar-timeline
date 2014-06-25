@@ -39,9 +39,6 @@ var Chart = function(trackdata, elmid) {
                  .append('g')
                  .attr('class', 'scrollbox');
 
-
-    svg.append('style').text("@font-face { font-family: 'glyphicons'; src: url('fonts/glyphicons-regular.eot'); src: url('fonts/glyphicons-regular.eot?#iefix') format('embeddedopentype'), url('fonts/glyphicons-regular.woff') format('woff'), url('fonts/glyphicons-regular.ttf') format('truetype'), url('fonts/glyphicons-regular.svg#glyphicons_halflingsregular') format('svg'); }");
-
     var xScale = d3.time.scale().range([0, calendarWidth]);
     var yScale = d3.scale.linear().range([calendarHeight, 0]);
 
@@ -107,12 +104,6 @@ var Chart = function(trackdata, elmid) {
             start.hours(7*24);
         }
         return weeks;
-    };
-
-    var generateExpandBox = function(d) {
-        var leftStart = xScale(d.start);
-        var rightStart = xScale(d.end);
-
     };
 
     var clearExpanded = function() {
