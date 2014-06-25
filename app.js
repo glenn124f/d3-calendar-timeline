@@ -49,7 +49,7 @@ var Chart = function(trackdata, elmid) {
     var initialX = null;
     var dragHandler = function() {
         if (initialX === null) {
-            d3.select('g.scrollbox').attr('dragging', 'true');
+            d3.select('svg').attr('dragging', 'true');
             initialX = d3.event.sourceEvent.screenX;
         }
         var offset = initialX - d3.event.sourceEvent.screenX; 
@@ -60,7 +60,7 @@ var Chart = function(trackdata, elmid) {
             var offsetTime = 4*7*24*60*60*1000/calendarWidth*offset;
             var start = moment(domain[0]).milliseconds(offsetTime);
             var end = moment(domain[1]).milliseconds(offsetTime);
-            d3.select('g.scrollbox').attr('dragging', null);
+            d3.select('svg').attr('dragging', null);
             d3.select('g.scrollbox').attr('transform', 'translate(0, 0)');
             xScale.domain([start.toDate(), end.toDate()]);
             update({duration: 1});
@@ -169,6 +169,15 @@ var Chart = function(trackdata, elmid) {
             .attr('fill', function(d) { return d.color; })
             .on('click', clickStep);
 
+    // we add a static rect that handles our dragging
+    d3.select('svg').append('rect')
+        .attr('class', 'dragbox')
+        .attr('width', calendarWidth)
+        .attr('height', weekboxHeight + 30)
+        .attr('y', calendarHeight - weekboxHeight - 15)
+        .attr('fill', 'transparent')
+        .call(dragBehavior);
+
     // call after setting domain, to update visuals
     var update = function(options) {
 
@@ -203,8 +212,7 @@ var Chart = function(trackdata, elmid) {
         var weekElm = weeks.enter()
             .append('g')
             .attr('class', 'week-boxes')
-            .attr('transform', stepstartTransform)
-            .call(dragBehavior);
+            .attr('transform', stepstartTransform);
 
         weekElm.append('rect')
             .attr('class', 'background')
@@ -230,6 +238,7 @@ var Chart = function(trackdata, elmid) {
             .attr('class', 'days')
             .attr('y', - 5)
             .text('M T O T F L S');
+
 
         weeks.exit().remove();
     };
