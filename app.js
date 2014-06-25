@@ -52,6 +52,7 @@ var Chart = function(trackdata, elmid) {
     yScale.domain([0, 2]);
 
     var initialX = null;
+    
     var dragStartHandler = function() {
 
     };
@@ -81,6 +82,12 @@ var Chart = function(trackdata, elmid) {
     var dragBehavior = d3.behavior.drag()
         .on('drag', dragHandler)
         .on('dragend', dragHandler);
+    
+    var weeknrText = function(d) { return 'UGE ' + moment(d.start).isoWeek(); };
+    var datespanText = function(d) {
+        return moment(d.start).format('DD-MM-YYYY') + ' - ' + 
+            moment(d.start).hours(6*24).format('DD-MM-YYYY'); 
+    };
 
     var stepstart = function(d) { return xScale(d.start); };
     var stepwidth = function(d) { return xScale(d.end) - xScale(d.start) - padding; };
@@ -89,6 +96,10 @@ var Chart = function(trackdata, elmid) {
     };
     var stepweek = function(d) {
         return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - padding;
+    };
+    var trackY = function(d, i) { 
+        console.log('track', i, d)
+        return d.track * 50; 
     };
 
     var stepstartTransform = function(d) { 
@@ -113,12 +124,6 @@ var Chart = function(trackdata, elmid) {
         return weeks;
     };
 
-    var clearExpanded = function() {
-        svg.selectAll('rect.step').style('opacity', 1);
-        svg.select('g.step-expand').remove();
-    };
-
-
     var clickStep = function(baseDataItem, i) {
         // gets the middle point of the clicked datespan as a moment date object 
         var midstepDate = moment(xScale.invert((xScale(baseDataItem.start) + xScale(baseDataItem.end)) / 2));
@@ -133,14 +138,45 @@ var Chart = function(trackdata, elmid) {
         // toggleMode(baseDataItem);
     };
 
+    var zoomBoxCloser = function() {
+        // fade box out in place, then shift and show again, to be ready for next zoom
+        zoomBox.select('rect.details-box')
+            .transition()
+            .style('opacity', 0)
+            .each('end', function() {
+                d3.select(this)
+                    .attr('x', -calendarWidth)
+                    .style('opacity', 1);
+            });
+
+        // first fade in in active tracks
+        stepGroups.selectAll('rect.step')
+            .filter(':not([track="' + activeTrack.nr + '"])')
+            .style('display','block')
+            .attr('x', stepstart) 
+            .transition()
+            .style('opacity', 1);
+
+        // maybe shift track also
+        stepGroups.selectAll('rect.step')
+            .filter('[track="' + activeTrack.nr + '"]')
+            .transition()
+            .attr('y', trackY);
+            
+
+        activeTrack = null;
+    };
+
     // binds tracks data once
-    svg.selectAll('rect.step')
+    var stepGroups = svg.selectAll('g.step')
         .data(trackdata)
-        .enter().append('rect')
+        .enter().append('g');
+
+    stepGroups.append('rect')
             .attr('class', 'step')
             .attr('track', function(d) { return d.track; })
             .attr('x', stepstart)
-            .attr('y', function(d, i) { return d.track * 50; })
+            .attr('y', trackY)
             .attr('width', stepwidth)
             .attr('height', 30)
             .attr('fill', function(d) { return d.color; })
@@ -158,32 +194,34 @@ var Chart = function(trackdata, elmid) {
 
     // call after setting domain, to update visuals
     var update = function(options) {
-
-        clearExpanded();
-
-        var weekBoxes = generateWeeks();
-
-        var weeknrText = function(d) { return 'UGE ' + moment(d.start).isoWeek(); };
-        var datespanText = function(d) {
-            return moment(d.start).format('DD-MM-YYYY') + ' - ' + 
-                moment(d.start).hours(6*24).format('DD-MM-YYYY'); 
-        };
-
-        if (options.dataitem && !activeTrack) {
+        // we create the zoom layer only the first time
+        if (options.dataitem && !zoomBox) {
             zoomBox = d3.select('svg')
                 .append('g')
                 .attr('class', 'zoom-group');
         
+            
+
             zoomBox.append('rect')
+                .on('click', zoomBoxCloser)
+                .attr('class', 'details-box')
                 .attr('width', calendarWidth - 200)
                 .attr('height', weekboxHeight + 25)
                 .attr('y', 30 + padding)
                 .attr('x', -calendarWidth)
-                .attr('fill', 'red')
-                .attr('style', 'opacity: 0.5')
+                .attr('fill', 'white')
+                .attr('stroke', 'silver')
+                .attr('stroke-width', 1);
+        }
+
+        if (options.dataitem && !activeTrack) {
+            // if we werent zoomed, setup the zoom box and state
+            zoomBox
+                .select('rect.details-box')
                 .transition()
                 .duration(500)
-                .attr('x', 100);
+                .attr('x', 100)
+
             var tdata = [];
             for (var i = 0; i < trackdata.length; i++) {
                 if (trackdata[i].track === options.dataitem.track) {
@@ -193,18 +231,27 @@ var Chart = function(trackdata, elmid) {
             activeTrack = { nr: options.dataitem.track, data: tdata };
         }
 
+        // filters used to toggle visuals. 
+        var activeTrackFilter = options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)';
+        var inactiveTrackFilter = activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)';
+
+        var weekBoxes = generateWeeks();
         var weeks = svg.selectAll('g.week-boxes')
             .data(weekBoxes, function(d) { return d.start; });
 
-        var steps = svg.selectAll('rect.step')
+        var steps = stepGroups.selectAll('rect.step')
             .transition()
             .duration(options.duration || 250)
             .attr('x', stepstart);
 
-        // possily fade out non active tracks, use display to kill mouse clicks
         steps
             .filter(activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)')
-            .style('display', 'none'); 
+            .transition()
+            .style('opacity', 0)
+            .each('end', function() {
+                d3.select(this)
+                    .style('display', 'none');
+            });
 
         // possibly shift active track up
         steps
