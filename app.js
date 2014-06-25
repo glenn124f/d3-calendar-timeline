@@ -28,13 +28,17 @@ var Chart = function(trackdata, elmid) {
     var weekboxHeight = 60;
     var padding = 4;
 
+    // state variables 
+    var zoomBox = null; // svg group elm is dynamically created when zooming in
+    var activeTrack = null; // stores the current track data    
+
     var domainDefault = {
         start: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).hours(-24*7).toDate(),
         end: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).hours(24*21).toDate()
     };
 
-    var svg = d3.select('#' + elmid)
-                 .append('svg')
+    var root = d3.select('#' + elmid).append('svg');
+    var svg = root
                  .attr('width', calendarWidth)
                  .attr('height', calendarHeight)
                  .append('g')
@@ -114,21 +118,6 @@ var Chart = function(trackdata, elmid) {
         svg.select('g.step-expand').remove();
     };
 
-    var zoomBox = null; // is dynamically created when zooming in
-
-    var createZoombox = function(data) {
-        zoomBox = d3.select('svg')
-            .append('g')
-            .attr('class', 'zoom-group');
-    
-        zoomBox.append('rect')
-            .attr('width', calendarWidth - 200)
-            .attr('height', weekboxHeight + 25)
-            .attr('y', 30 + padding)
-            .attr('x', 100)
-            .attr('fill', 'red')
-            .attr('style', 'opacity: 0.5');
-    };
 
     var clickStep = function(baseDataItem, i) {
         // gets the middle point of the clicked datespan as a moment date object 
@@ -166,6 +155,7 @@ var Chart = function(trackdata, elmid) {
         .attr('fill', 'transparent')
         .call(dragBehavior);
 
+
     // call after setting domain, to update visuals
     var update = function(options) {
 
@@ -179,45 +169,47 @@ var Chart = function(trackdata, elmid) {
                 moment(d.start).hours(6*24).format('DD-MM-YYYY'); 
         };
 
-        var zoomAnimationEnd = (function() {
-            var executed = false;
-            return function() {
-                if (!executed) {
-                    executed = true;
-                    createZoombox(options.dataitem);
+        if (options.dataitem && !activeTrack) {
+            zoomBox = d3.select('svg')
+                .append('g')
+                .attr('class', 'zoom-group');
+        
+            zoomBox.append('rect')
+                .attr('width', calendarWidth - 200)
+                .attr('height', weekboxHeight + 25)
+                .attr('y', 30 + padding)
+                .attr('x', -calendarWidth)
+                .attr('fill', 'red')
+                .attr('style', 'opacity: 0.5')
+                .transition()
+                .duration(500)
+                .attr('x', 100);
+            var tdata = [];
+            for (var i = 0; i < trackdata.length; i++) {
+                if (trackdata[i].track === options.dataitem.track) {
+                    tdata.push(trackdata[i]);
                 }
-            };
-        })();
-
-        var shiftAnimationEnd = (function() {
-            var executed = false;
-            return function () {
-                if (!executed) {
-                    executed = true;
-                    if (options.dataitem && options.zoom) {
-                        svg.selectAll('rect.step')
-                            .filter(':not([track="' + options.dataitem.track + '"])')
-                            .transition()
-                            .style('opacity', 0);
-
-                        svg.selectAll('rect.step')
-                            .filter('[track="' + options.dataitem.track + '"]')
-                            .transition()
-                            .attr('y', 0)
-                            .each(zoomAnimationEnd);
-                    }
-                }
-            };
-        })();
+            }
+            activeTrack = { nr: options.dataitem.track, data: tdata };
+        }
 
         var weeks = svg.selectAll('g.week-boxes')
             .data(weekBoxes, function(d) { return d.start; });
 
-        svg.selectAll('rect.step')
+        var steps = svg.selectAll('rect.step')
             .transition()
             .duration(options.duration || 250)
-            .attr('x', stepstart)
-            .each(shiftAnimationEnd);
+            .attr('x', stepstart);
+
+        // possily fade out non active tracks, use display to kill mouse clicks
+        steps
+            .filter(activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)')
+            .style('display', 'none'); 
+
+        // possibly shift active track up
+        steps
+            .filter(options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)')
+            .attr('y', 0);
 
         svg.selectAll('g.week-boxes')
             .transition()
