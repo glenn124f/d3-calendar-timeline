@@ -26,6 +26,7 @@ var Chart = function(trackdata, elmid) {
     var calendarWidth = 1000;
     var calendarHeight = 200;
     var weekboxHeight = 60;
+    var padding = 4;
 
     var domainDefault = {
         start: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).hours(-24*7).toDate(),
@@ -47,6 +48,9 @@ var Chart = function(trackdata, elmid) {
     yScale.domain([0, 2]);
 
     var initialX = null;
+    var dragStartHandler = function() {
+
+    };
     var dragHandler = function() {
         if (initialX === null) {
             d3.select('svg').attr('dragging', 'true');
@@ -75,12 +79,12 @@ var Chart = function(trackdata, elmid) {
         .on('dragend', dragHandler);
 
     var stepstart = function(d) { return xScale(d.start); };
-    var stepwidth = function(d) { return xScale(d.end) - xScale(d.start) - 4; };
+    var stepwidth = function(d) { return xScale(d.end) - xScale(d.start) - padding; };
     var stepmidweek = function (d) {
         return xScale(moment(d.start).hours(3.5*24).toDate());
     };
     var stepweek = function(d) {
-        return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - 4;
+        return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - padding;
     };
 
     var stepstartTransform = function(d) { 
@@ -96,7 +100,6 @@ var Chart = function(trackdata, elmid) {
         var weekPadding = 20; 
         var start = moment(current[0]).isoWeekday(1).hours(0).minutes(0).seconds(0).hours(-24*7*weekPadding);
         var end = moment(start).hours(24*7*(weekPadding*2+4));
-        console.log('start', start.toString());
         while (start.isBefore(end)) {
             weeks.push({
                 start: moment(start).toDate()
@@ -111,49 +114,34 @@ var Chart = function(trackdata, elmid) {
         svg.select('g.step-expand').remove();
     };
 
+    var zoomBox = null; // is dynamically created when zooming in
+
+    var createZoombox = function(data) {
+        zoomBox = d3.select('svg')
+            .append('g')
+            .attr('class', 'zoom-group');
+    
+        zoomBox.append('rect')
+            .attr('width', calendarWidth - 200)
+            .attr('height', weekboxHeight + 25)
+            .attr('y', 30 + padding)
+            .attr('x', 100)
+            .attr('fill', 'red')
+            .attr('style', 'opacity: 0.5');
+    };
+
     var clickStep = function(baseDataItem, i) {
-        if (baseDataItem.collapsed && baseDataItem.collapsed.length > 0) {
-            // fades other track completely
-            svg.selectAll('rect.step')
-                .filter('[track="' + (baseDataItem.track === 0 ? 1 : 0) + '"]')
-                .transition().duration(500)
-                .style('opacity', 0);
+        // gets the middle point of the clicked datespan as a moment date object 
+        var midstepDate = moment(xScale.invert((xScale(baseDataItem.start) + xScale(baseDataItem.end)) / 2));
+        var domain = xScale.domain();
+        var currentMidDate = moment(domain[0]).hours(14*24); // two weeks in must be about mid ...
+        var shiftMs = midstepDate.diff(currentMidDate, 'milliseconds');
+        var newStart = moment(domain[0]).milliseconds(shiftMs);
+        var newEnd = moment(newStart).hours(4*7*24);
 
-            svg.selectAll('rect.step')
-                .filter('[track="' + (baseDataItem.track === 0 ? 0 : 1) + '"]')
-                .transition().duration(100)
-                .attr('y', 0)
-                .each('end', function() {
-
-                    svg.append('g').attr('class', 'step-expand');
-                    var stepExpand = svg.select('g.step-expand')
-                        .selectAll('rect.expand')
-                        .data(baseDataItem.collapsed)
-                        .enter();
-
-                    stepExpand.append('rect')
-                        .attr('class', 'expand')
-                        .attr('x', function() { return stepstart(baseDataItem); })
-                        .attr('y', 0)
-                        .attr('width', function() { return stepwidth(baseDataItem); })
-                        .attr('height', 30)
-                        .attr('fill', 'purple');
-
-                    stepExpand.append('text')
-                        .attr('x', function() { return stepstart(baseDataItem); })
-                        .attr('y', 0)
-                        .attr('style', 'font-family: \'glyphicons\'')
-                        .text('\u0001')
-
-                    svg.selectAll('rect.expand')
-                        .transition()
-                        .attr('y', 36)
-                        .attr('height', 100)
-                        .attr('width', 500);
-
-                    
-                });
-        }
+        xScale.domain([newStart.toDate(), newEnd.toDate()]);
+        update({dataitem: baseDataItem, zoom: true});
+        // toggleMode(baseDataItem);
     };
 
     // binds tracks data once
@@ -191,22 +179,49 @@ var Chart = function(trackdata, elmid) {
                 moment(d.start).hours(6*24).format('DD-MM-YYYY'); 
         };
 
+        var zoomAnimationEnd = (function() {
+            var executed = false;
+            return function() {
+                if (!executed) {
+                    executed = true;
+                    createZoombox(options.dataitem);
+                }
+            };
+        })();
+
+        var shiftAnimationEnd = (function() {
+            var executed = false;
+            return function () {
+                if (!executed) {
+                    executed = true;
+                    if (options.dataitem && options.zoom) {
+                        svg.selectAll('rect.step')
+                            .filter(':not([track="' + options.dataitem.track + '"])')
+                            .transition()
+                            .style('opacity', 0);
+
+                        svg.selectAll('rect.step')
+                            .filter('[track="' + options.dataitem.track + '"]')
+                            .transition()
+                            .attr('y', 0)
+                            .each(zoomAnimationEnd);
+                    }
+                }
+            };
+        })();
+
         var weeks = svg.selectAll('g.week-boxes')
             .data(weekBoxes, function(d) { return d.start; });
-
-        // weeks.selectAll('rect.background').attr('x', stepstart);
-        // weeks.selectAll('text.weeknr-text').attr('x', stepmidweek);
-        // weeks.selectAll('text.datespan').attr('x', stepmidweek);
-        // weeks.selectAll('text.days').transition().duration(options.duration || 250).attr('x', stepstart);
 
         svg.selectAll('rect.step')
             .transition()
             .duration(options.duration || 250)
-            .attr('x', stepstart);
+            .attr('x', stepstart)
+            .each(shiftAnimationEnd);
 
         svg.selectAll('g.week-boxes')
-            // .transition()
-            // .duration(options.duration || 250)
+            .transition()
+            .duration(options.duration || 250)
             .attr('transform', stepstartTransform);
 
         var weekElm = weeks.enter()
