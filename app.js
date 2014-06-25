@@ -2,7 +2,7 @@ var data = (function() {
     var md = function(n) {
         return moment().hours(7*24).minutes(0).seconds(0).hours(-n*24).toDate();
     };
-    return [
+    var l = [
         {start: md(42), end: md(30), label: 'first', color: 'blue', track: 0 },
         {start: md(30), end: md(20), label: 'second', color: 'pink', track: 0 },
         {start: md(20), end: md(13), label: 'third', color: 'yellow', track: 0 },
@@ -18,6 +18,11 @@ var data = (function() {
         {start: md(3), end: md(0), label: 'third', color: 'red', track: 1 },
         {start: md(0), end: md(-20), label: 'fourth', color: 'red', track: 1 }
     ];
+    for (var i = 0; i < l.length; i++) {
+        l[i].startM = moment(l[i].start);
+        l[i].endM = moment(l[i].end);
+    }
+    return l;
 })();
 
 var Chart = function(trackdata, elmid) {
@@ -62,19 +67,48 @@ var Chart = function(trackdata, elmid) {
             initialX = d3.event.sourceEvent.screenX;
         }
         var offset = initialX - d3.event.sourceEvent.screenX; 
+        var offsetTime = 4*7*24*60*60*1000/calendarWidth*offset;
+        var domain = xScale.domain();
+        // time/pix density 
+        var start = moment(domain[0]).milliseconds(offsetTime);
+        var end = moment(domain[1]).milliseconds(offsetTime);
+
         if (d3.event.type === 'dragend') {
             initialX = null;
-            var domain = xScale.domain();
-            // time/pix density 
-            var offsetTime = 4*7*24*60*60*1000/calendarWidth*offset;
-            var start = moment(domain[0]).milliseconds(offsetTime);
-            var end = moment(domain[1]).milliseconds(offsetTime);
             d3.select('svg').attr('dragging', null);
             d3.select('g.scrollbox').attr('transform', 'translate(0, 0)');
             xScale.domain([start.toDate(), end.toDate()]);
             update({duration: 1});
         } else {
             d3.select('g.scrollbox').attr('transform', 'translate(' + -offset + ', 0)');
+        }
+
+        if (activeTrack) {
+            var midweek = moment(start).hours(14*24);
+            var activeIndex = -1;
+            for(var i = 0; i < activeTrack.data.length; i++) {
+                // attempt some caching
+                if (!midweek.isBefore(activeTrack.data[i].startM) &&
+                    midweek.isBefore(activeTrack.data[i].endM)) {
+                    activeIndex = i;
+                    break;
+                }
+            }
+
+            if (activeIndex >= 0) {
+                   
+                console.log('scope', activeIndex, activeTrack.data[activeIndex].color);
+            }
+            
+            // construct two paths that snap to the active track, we do this manually
+            var rp = {
+                tlx: 0, tly: 0,
+                trx: 0, 'try': 0,
+                blx: 0, bly: 0,
+                brx: 0, bry: 0
+            };
+
+
         }
     };
 
@@ -98,7 +132,6 @@ var Chart = function(trackdata, elmid) {
         return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - padding;
     };
     var trackY = function(d, i) { 
-        console.log('track', i, d)
         return d.track * 50; 
     };
 
@@ -134,7 +167,7 @@ var Chart = function(trackdata, elmid) {
         var newEnd = moment(newStart).hours(4*7*24);
 
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
-        update({dataitem: baseDataItem, zoom: true});
+        update({dataitem: baseDataItem, zoom: true, waspositive: shiftMs > 0});
         // toggleMode(baseDataItem);
     };
 
@@ -200,8 +233,6 @@ var Chart = function(trackdata, elmid) {
                 .append('g')
                 .attr('class', 'zoom-group');
         
-            
-
             zoomBox.append('rect')
                 .on('click', zoomBoxCloser)
                 .attr('class', 'details-box')
@@ -215,11 +246,17 @@ var Chart = function(trackdata, elmid) {
         }
 
         if (options.dataitem && !activeTrack) {
-            // if we werent zoomed, setup the zoom box and state
+            var shiftedLeft = options.waspositive; 
+            if (!shiftedLeft) {
+                // causes the details box to move in the othe rway
+                zoomBox
+                    .select('rect.details-box')
+                    .attr('x', calendarWidth*2);
+            }
             zoomBox
                 .select('rect.details-box')
                 .transition()
-                .duration(500)
+                .duration(600)
                 .attr('x', 100)
 
             var tdata = [];
