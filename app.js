@@ -34,7 +34,7 @@ var Chart = function(trackdata, elmid) {
     var padding = 4;
 
     // state variables 
-    var zoomBox = null; // svg group elm is dynamically created when zooming in
+    var zoomGroup = null; // svg group elm is dynamically created when zooming in
     var activeTrack = null; // stores the current track data    
 
     var domainDefault = {
@@ -171,15 +171,14 @@ var Chart = function(trackdata, elmid) {
         // toggleMode(baseDataItem);
     };
 
-    var zoomBoxCloser = function() {
+    var zoomGroupCloser = function() {
         // fade box out in place, then shift and show again, to be ready for next zoom
-        zoomBox.select('rect.details-box')
+        zoomGroup.selectAll('rect.details-box, text.icon')
             .transition()
             .style('opacity', 0)
             .each('end', function() {
-                d3.select(this)
-                    .attr('x', -calendarWidth)
-                    .style('opacity', 1);
+                zoomGroup.attr('transform', 'translate('+ (-calendarWidth) +', 0)');
+                d3.select(this).style('opacity', 1);
             });
 
         // first fade in in active tracks
@@ -228,36 +227,45 @@ var Chart = function(trackdata, elmid) {
     // call after setting domain, to update visuals
     var update = function(options) {
         // we create the zoom layer only the first time
-        if (options.dataitem && !zoomBox) {
-            zoomBox = d3.select('svg')
+        if (options.dataitem && !zoomGroup) {
+            zoomGroup = d3.select('svg')
                 .append('g')
-                .attr('class', 'zoom-group');
+                .attr('class', 'zoom-group')
+                .attr('transform', 'translate('+ (-calendarWidth) +', 0)');
         
-            zoomBox.append('rect')
-                .on('click', zoomBoxCloser)
+            zoomGroup.append('rect')
+                .on('click', zoomGroupCloser)
                 .attr('class', 'details-box')
                 .attr('width', calendarWidth - 200)
                 .attr('height', weekboxHeight + 25)
                 .attr('y', 30 + padding)
-                .attr('x', -calendarWidth)
+                .attr('x', 100)
                 .attr('fill', 'white')
                 .attr('stroke', 'silver')
                 .attr('stroke-width', 1);
+
+            zoomGroup.append('text')
+                .attr('class', 'zoom-pan-btn icon')
+                .attr('x', 20)
+                .attr('y', 110)
+                .html('&#xe211;');
+
+            zoomGroup.append('text')
+                .attr('class', 'zoom-pan-btn icon')
+                .attr('x', calendarWidth-80)
+                .attr('y', 110)
+                .html('&#xe212;');
         }
 
         if (options.dataitem && !activeTrack) {
             var shiftedLeft = options.waspositive; 
             if (!shiftedLeft) {
                 // causes the details box to move in the othe rway
-                zoomBox
-                    .select('rect.details-box')
-                    .attr('x', calendarWidth*2);
+                zoomGroup.attr('transform', 'translate('+ (2*calendarWidth) +', 0)');
             }
-            zoomBox
-                .select('rect.details-box')
-                .transition()
+            zoomGroup.transition()
                 .duration(600)
-                .attr('x', 100)
+                .attr('transform', 'translate(0, 0)')
 
             var tdata = [];
             for (var i = 0; i < trackdata.length; i++) {
