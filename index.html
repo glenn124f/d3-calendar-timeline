@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
 <head>
+<title>Timeline</title>
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta http-equiv="content-type" content="text/html; charset=UTF8">
 <script src="moment.js"></script>
@@ -18,6 +19,25 @@
 
 .icon {
     font-family: 'glyphicons';
+}
+
+.icon-container {
+    cursor: pointer;
+    font-size: 200%;
+    text-shadow: 
+        #fff 2px 2px 2px, 
+        #fff -2px -2px 2px, 
+        #fff -2px 2px 2px, 
+        #fff 2px -2px 2px,
+        #aaa 0 0 20px;
+}
+
+.icon-container .icon {
+    opacity: 0.3;
+}
+
+.icon-container .icon:hover {
+    opacity: 1;
 }
 
 .zoom-pan-btn {
@@ -69,7 +89,6 @@ svg[dragging="true"] .dragbox {
 
 #calendar {
     margin: 10px;
-    display: block;
 }
 
 #calendar svg {

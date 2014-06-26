@@ -22,10 +22,8 @@ var generateData = function() {
         var start = moment(starts[i]);
         while(date.diff(start, 'days') < maxdays) {
             var tracklen = Math.round(Math.random()*maxdays/2+7);
-            console.log('generating', tracklen);
             while(date.diff(start, 'days') < tracklen) {
                 var stepsize = Math.ceil(Math.random()*7);
-                console.log('adding step', stepsize);
                 if (Math.random()<0.1){
                     stepsize *= 3;
                 }
@@ -52,4 +50,23 @@ var generateData = function() {
     }
     console.log(data)
     return data;
+};
+
+
+// generates week boxes on the fly ...
+var generateWeeks = function(scale) {
+    var weeks = [];
+    var current = scale.domain();
+
+    // add x weeks padding to the durrent domain, can be scrolled into view by drag
+    var weekPadding = 20; 
+    var start = moment(current[0]).isoWeekday(1).hours(0).minutes(0).seconds(0).hours(-24*7*weekPadding);
+    var end = moment(start).hours(24*7*(weekPadding*2+4));
+    while (start.isBefore(end)) {
+        weeks.push({
+            start: moment(start).toDate()
+        });
+        start.hours(7*24);
+    }
+    return weeks;
 };

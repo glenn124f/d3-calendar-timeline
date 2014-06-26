@@ -8,16 +8,26 @@ var Chart = function(trackdata, elmid, tracknr) {
     var padding = 4;
     var stepHeight = 30;
 
+    var iconOffset = 35;
+
     // state variables 
     var zoomGroup = null; // svg group elm is dynamically created when zooming in
     var activeTrack = null; // stores the current track data    
+    // indicates if the current view has the default domain set
+    var domainIsDefault = true; 
 
     var domainSizes = [4*7];
     // always start at monday of the previous week
     var domainStart = moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('days', -7);
     var domainDefault = {
         start: domainStart.toDate(),
-        end: moment(domainStart).add('days', domainSizes[0]).toDate()
+        end: moment(domainStart).add('weeks', 4).toDate()
+    };
+
+    var monthStart = moment().date(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('months', -1);
+    var monthDomain = {
+        start: moment(monthStart).toDate(),
+        end: moment(monthStart).add('months', 4)
     };
 
     var root = d3.select('#' + elmid).append('svg');
@@ -49,6 +59,7 @@ var Chart = function(trackdata, elmid, tracknr) {
 
         if (d3.event.type === 'dragend') {
             initialX = null;
+            domainIsDefault = offsetTime===0;
             d3.select('svg').attr('dragging', null);
             d3.select('g.scrollbox').attr('transform', 'translate(0, 0)');
             xScale.domain([start.toDate(), end.toDate()]);
@@ -114,24 +125,6 @@ var Chart = function(trackdata, elmid, tracknr) {
         return 'translate(' + stepstart(d) + ', ' + (calendarHeight - weekboxHeight) + ')'; 
     };
 
-    // generates week boxes on the fly ...
-    var generateWeeks = function(scale) {
-        var weeks = [];
-        var current = scale.domain();
-
-        // add x weeks padding to the durrent domain, can be scrolled into view by drag
-        var weekPadding = 20; 
-        var start = moment(current[0]).isoWeekday(1).hours(0).minutes(0).seconds(0).hours(-24*7*weekPadding);
-        var end = moment(start).hours(24*7*(weekPadding*2+4));
-        while (start.isBefore(end)) {
-            weeks.push({
-                start: moment(start).toDate()
-            });
-            start.hours(7*24);
-        }
-        return weeks;
-    };
-
     var clickStep = function(baseDataItem, i) {
         // gets the middle point of the clicked datespan as a moment date object 
         var midstepDate = moment(xScale.invert((xScale(baseDataItem.start) + xScale(baseDataItem.end)) / 2));
@@ -140,6 +133,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         var shiftMs = midstepDate.diff(currentMidDate, 'milliseconds');
         var newStart = moment(domain[0]).add('milliseconds', shiftMs);
         var newEnd = moment(newStart).add('days', domainSizes[0]);
+        domainIsDefault = shiftMs===0;
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
         update({dataitem: baseDataItem, zoom: true});
     };
@@ -150,6 +144,8 @@ var Chart = function(trackdata, elmid, tracknr) {
             .transition()
             .style('opacity', 0)
             .each('end', function() {
+                // this gets executed multiple times, so no animations possible
+                iconGroup.style('display', 'block');
                 zoomGroup.attr('transform', 'translate(0, ' + -calendarHeight + ')');
                 d3.select(this).style('opacity', 1);
             });
@@ -168,7 +164,7 @@ var Chart = function(trackdata, elmid, tracknr) {
             .filter('[track="' + activeTrack.nr + '"]')
             .transition()
             .attr('y', trackY);
-            
+        
 
         activeTrack = null;
     };
@@ -197,6 +193,32 @@ var Chart = function(trackdata, elmid, tracknr) {
         .attr('fill', 'transparent')
         .call(dragBehavior);
 
+    // static icons
+    var iconGroup = root.append('g')
+        .attr('class', 'icon-container')
+        .attr('transform', 'translate('+ (calendarWidth) +', 0)');
+    
+    iconGroup.append('text')
+        .attr('x', -42)
+        .attr('y', iconOffset)
+        .attr('class', 'icon')
+        .html('&#xe081; <title>Maenedsvisning</title>')
+        .on('click', function() {
+
+        });
+
+    // show after movement
+    iconGroup.append('text')
+        .attr('x', -42)
+        .attr('y', iconOffset + 35)
+        .attr('class', 'icon reset-view')
+        .style('display', 'none')
+        .html('&#xe435; <title>Gå til til dags dato</title>')
+        .on('click', function() {
+            xScale.domain([domainDefault.start, domainDefault.end]);
+            domainIsDefault = true;
+            update({});
+        });
 
     // call after setting domain, to update visuals
     var update = function(options) {
@@ -234,7 +256,9 @@ var Chart = function(trackdata, elmid, tracknr) {
         if (options.dataitem && !activeTrack) {
             zoomGroup.transition()
                 .ease('quad')
-                .attr('transform', 'translate(0, 0)')
+                .attr('transform', 'translate(0, 0)');
+
+            iconGroup.style('display', 'none');
 
             var tdata = [];
             for (var i = 0; i < trackdata.length; i++) {
@@ -244,6 +268,8 @@ var Chart = function(trackdata, elmid, tracknr) {
             }
             activeTrack = { nr: options.dataitem.track, data: tdata };
         }
+
+        iconGroup.selectAll('text.reset-view').style('display', domainIsDefault ? 'none' : 'block');
 
         // filters used to toggle visuals. 
         var activeTrackFilter = options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)';
