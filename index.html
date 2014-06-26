@@ -68,9 +68,12 @@ svg[dragging="true"] .dragbox {
 }
 
 #calendar {
-    display: inline-block;
-    background-color: white;
+    display: inline;
+}
+
+#calendar svg {
     overflow: hidden;
+    background-color: white;
 }
 
 body {
@@ -87,7 +90,7 @@ button {
 </style>
 </head>
 <body>
-<span id="calendar"></span>
+<div id="calendar"></div>
 <script src="app.js"></script>
 </body>
 </html>

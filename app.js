@@ -28,6 +28,7 @@ var data = (function() {
 var Chart = function(trackdata, elmid) {
     var self = this;
 
+
     var calendarWidth = 1000;
     var calendarHeight = 200;
     var weekboxHeight = 60;
@@ -37,9 +38,12 @@ var Chart = function(trackdata, elmid) {
     var zoomGroup = null; // svg group elm is dynamically created when zooming in
     var activeTrack = null; // stores the current track data    
 
+    var domainSizes = [4*7];
+    // always start at monday of the previous week
+    var domainStart = moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('days', -7);
     var domainDefault = {
-        start: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).hours(-24*7).toDate(),
-        end: moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).hours(24*21).toDate()
+        start: domainStart.toDate(),
+        end: moment(domainStart).add('days', domainSizes[0]).toDate()
     };
 
     var root = d3.select('#' + elmid).append('svg');
@@ -57,6 +61,7 @@ var Chart = function(trackdata, elmid) {
     yScale.domain([0, 2]);
 
     var initialX = null;
+    var wroteStartDomain = null;
     
     var dragStartHandler = function() {
 
@@ -163,12 +168,10 @@ var Chart = function(trackdata, elmid) {
         var domain = xScale.domain();
         var currentMidDate = moment(domain[0]).hours(14*24); // two weeks in must be about mid ...
         var shiftMs = midstepDate.diff(currentMidDate, 'milliseconds');
-        var newStart = moment(domain[0]).milliseconds(shiftMs);
-        var newEnd = moment(newStart).hours(4*7*24);
-
+        var newStart = moment(domain[0]).add('milliseconds', shiftMs);
+        var newEnd = moment(newStart).add('days', domainSizes[0]);
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
         update({dataitem: baseDataItem, zoom: true, waspositive: shiftMs > 0});
-        // toggleMode(baseDataItem);
     };
 
     var zoomGroupCloser = function() {
@@ -284,11 +287,13 @@ var Chart = function(trackdata, elmid) {
         var weeks = svg.selectAll('g.week-boxes')
             .data(weekBoxes, function(d) { return d.start; });
 
+        // main step animation. updates x axis accoding to domain
         var steps = stepGroups.selectAll('rect.step')
             .transition()
             .duration(options.duration || 250)
             .attr('x', stepstart);
 
+        // if we're zoomed, we might want to zoom fade the other tracks
         steps
             .filter(activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)')
             .transition()
@@ -298,16 +303,18 @@ var Chart = function(trackdata, elmid) {
                     .style('display', 'none');
             });
 
-        // possibly shift active track up
+        // and possibly shift active track up
         steps
             .filter(options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)')
             .attr('y', 0);
 
+        // main week box scroll animation (transform on group)
         svg.selectAll('g.week-boxes')
             .transition()
             .duration(options.duration || 250)
             .attr('transform', stepstartTransform);
 
+        // create week boxes 
         var weekElm = weeks.enter()
             .append('g')
             .attr('class', 'week-boxes')
