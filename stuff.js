@@ -70,3 +70,21 @@ var generateWeeks = function(scale) {
     }
     return weeks;
 };
+
+
+
+var getMonthDomain = function(weekScale) {
+    var domain = weekScale.domain();
+    var currentMid = moment(domain[0]).add('days', 14);
+    var newStart = moment(currentMid).add('months', -2);
+    var newEnd = moment(newStart).add('months', 4);
+    return [newStart.toDate(), newEnd.toDate()];
+};
+
+var getWeekDomain = function(monthScale) {
+    var domain = monthScale.domain();
+    var currentMid = moment(domain[0]).add('months', 2);
+    var newStart = moment(currentMid).add('weeks', -2);
+    var newEnd = moment(newStart).add('weeks', 4);
+    return [newStart.toDate(), newEnd.toDate()];        
+};
