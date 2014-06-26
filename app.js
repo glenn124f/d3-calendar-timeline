@@ -166,7 +166,7 @@ var Chart = function(trackdata, elmid) {
         // gets the middle point of the clicked datespan as a moment date object 
         var midstepDate = moment(xScale.invert((xScale(baseDataItem.start) + xScale(baseDataItem.end)) / 2));
         var domain = xScale.domain();
-        var currentMidDate = moment(domain[0]).hours(14*24); // two weeks in must be about mid ...
+        var currentMidDate = moment(domain[0]).add('days', 14); // two weeks in must be about mid ...
         var shiftMs = midstepDate.diff(currentMidDate, 'milliseconds');
         var newStart = moment(domain[0]).add('milliseconds', shiftMs);
         var newEnd = moment(newStart).add('days', domainSizes[0]);
