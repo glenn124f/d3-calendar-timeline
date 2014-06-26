@@ -1,38 +1,12 @@
-var data = (function() {
-    var md = function(n) {
-        return moment().hours(7*24).minutes(0).seconds(0).hours(-n*24).toDate();
-    };
-    var l = [
-        {start: md(42), end: md(30), label: 'first', color: 'blue', track: 0 },
-        {start: md(30), end: md(20), label: 'second', color: 'pink', track: 0 },
-        {start: md(20), end: md(13), label: 'third', color: 'yellow', track: 0 },
-        {start: md(13), end: md(10), label: 'fourth', color: 'green', track: 0 },
-        {start: md(10), end: md(9), label: 'fifth', color: 'black', track: 0,
-            collapsed: [{label: 'foo1'}, {label: 'foo2'}, {label: 'foo3'}]
-         },
-
-        {start: md(13), end: md(6), label: 'first', color: 'red', track: 1 },
-        {start: md(6), end: md(3), label: 'second', color: 'red', track: 1,
-            collapsed: [{label: 'bar1'}, {label: 'bar2'}]
-         },
-        {start: md(3), end: md(0), label: 'third', color: 'red', track: 1 },
-        {start: md(0), end: md(-20), label: 'fourth', color: 'red', track: 1 }
-    ];
-    for (var i = 0; i < l.length; i++) {
-        l[i].startM = moment(l[i].start);
-        l[i].endM = moment(l[i].end);
-    }
-    return l;
-})();
-
-var Chart = function(trackdata, elmid) {
+var Chart = function(trackdata, elmid, tracknr) {
     var self = this;
 
-
     var calendarWidth = 1000;
-    var calendarHeight = 200;
+    var calendarHeight = 180;
     var weekboxHeight = 60;
+    var detailsBoxHeight = 60;
     var padding = 4;
+    var stepHeight = 30;
 
     // state variables 
     var zoomGroup = null; // svg group elm is dynamically created when zooming in
@@ -58,14 +32,9 @@ var Chart = function(trackdata, elmid) {
 
     // sets default domain
     xScale.domain([domainDefault.start, domainDefault.end]);
-    yScale.domain([0, 2]);
+    yScale.domain([0, 3]);
 
     var initialX = null;
-    var wroteStartDomain = null;
-    
-    var dragStartHandler = function() {
-
-    };
     var dragHandler = function() {
         if (initialX === null) {
             d3.select('svg').attr('dragging', 'true');
@@ -137,7 +106,8 @@ var Chart = function(trackdata, elmid) {
         return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - padding;
     };
     var trackY = function(d, i) { 
-        return d.track * 50; 
+        console.log('trackY', (d.track * stepHeight))
+        return (d.track * stepHeight) + (d.track * padding); 
     };
 
     var stepstartTransform = function(d) { 
@@ -145,9 +115,9 @@ var Chart = function(trackdata, elmid) {
     };
 
     // generates week boxes on the fly ...
-    var generateWeeks = function() {
+    var generateWeeks = function(scale) {
         var weeks = [];
-        var current = xScale.domain();
+        var current = scale.domain();
 
         // add x weeks padding to the durrent domain, can be scrolled into view by drag
         var weekPadding = 20; 
@@ -171,7 +141,7 @@ var Chart = function(trackdata, elmid) {
         var newStart = moment(domain[0]).add('milliseconds', shiftMs);
         var newEnd = moment(newStart).add('days', domainSizes[0]);
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
-        update({dataitem: baseDataItem, zoom: true, waspositive: shiftMs > 0});
+        update({dataitem: baseDataItem, zoom: true});
     };
 
     var zoomGroupCloser = function() {
@@ -180,14 +150,15 @@ var Chart = function(trackdata, elmid) {
             .transition()
             .style('opacity', 0)
             .each('end', function() {
-                zoomGroup.attr('transform', 'translate('+ (-calendarWidth) +', 0)');
+                zoomGroup.attr('transform', 'translate(0, ' + -calendarHeight + ')');
                 d3.select(this).style('opacity', 1);
             });
 
         // first fade in in active tracks
         stepGroups.selectAll('rect.step')
             .filter(':not([track="' + activeTrack.nr + '"])')
-            .style('display','block')
+            .style('opacity',0)
+            .style('display', 'block')
             .attr('x', stepstart) 
             .transition()
             .style('opacity', 1);
@@ -213,7 +184,7 @@ var Chart = function(trackdata, elmid) {
             .attr('x', stepstart)
             .attr('y', trackY)
             .attr('width', stepwidth)
-            .attr('height', 30)
+            .attr('height', stepHeight)
             .attr('fill', function(d) { return d.color; })
             .on('click', clickStep);
 
@@ -234,14 +205,14 @@ var Chart = function(trackdata, elmid) {
             zoomGroup = d3.select('svg')
                 .append('g')
                 .attr('class', 'zoom-group')
-                .attr('transform', 'translate('+ (-calendarWidth) +', 0)');
+                .attr('transform', 'translate(0, '+ (-calendarHeight) +')');
         
             zoomGroup.append('rect')
                 .on('click', zoomGroupCloser)
                 .attr('class', 'details-box')
                 .attr('width', calendarWidth - 200)
-                .attr('height', weekboxHeight + 25)
-                .attr('y', 30 + padding)
+                .attr('height', detailsBoxHeight)
+                .attr('y', 0)
                 .attr('x', 100)
                 .attr('fill', 'white')
                 .attr('stroke', 'silver')
@@ -250,24 +221,19 @@ var Chart = function(trackdata, elmid) {
             zoomGroup.append('text')
                 .attr('class', 'zoom-pan-btn icon')
                 .attr('x', 20)
-                .attr('y', 110)
+                .attr('y', detailsBoxHeight/2 + 30)
                 .html('&#xe211;');
 
             zoomGroup.append('text')
                 .attr('class', 'zoom-pan-btn icon')
                 .attr('x', calendarWidth-80)
-                .attr('y', 110)
+                .attr('y', detailsBoxHeight/2 + 30)
                 .html('&#xe212;');
         }
 
         if (options.dataitem && !activeTrack) {
-            var shiftedLeft = options.waspositive; 
-            if (!shiftedLeft) {
-                // causes the details box to move in the othe rway
-                zoomGroup.attr('transform', 'translate('+ (2*calendarWidth) +', 0)');
-            }
             zoomGroup.transition()
-                .duration(600)
+                .ease('quad')
                 .attr('transform', 'translate(0, 0)')
 
             var tdata = [];
@@ -283,7 +249,7 @@ var Chart = function(trackdata, elmid) {
         var activeTrackFilter = options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)';
         var inactiveTrackFilter = activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)';
 
-        var weekBoxes = generateWeeks();
+        var weekBoxes = generateWeeks(xScale);
         var weeks = svg.selectAll('g.week-boxes')
             .data(weekBoxes, function(d) { return d.start; });
 
@@ -293,20 +259,15 @@ var Chart = function(trackdata, elmid) {
             .duration(options.duration || 250)
             .attr('x', stepstart);
 
-        // if we're zoomed, we might want to zoom fade the other tracks
+        // if we're zoomed, we might want to hide the other tracks
         steps
             .filter(activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)')
-            .transition()
-            .style('opacity', 0)
-            .each('end', function() {
-                d3.select(this)
-                    .style('display', 'none');
-            });
+            .style('display', 'none');
 
-        // and possibly shift active track up
+        // and possibly shift active track down
         steps
             .filter(options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)')
-            .attr('y', 0);
+            .attr('y', detailsBoxHeight + padding * 2);
 
         // main week box scroll animation (transform on group)
         svg.selectAll('g.week-boxes')
@@ -354,4 +315,4 @@ var Chart = function(trackdata, elmid) {
 
 };
 
-var chart = new Chart(data, 'calendar');
+var chart = new Chart(generateData(), 'calendar');
