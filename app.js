@@ -28,7 +28,6 @@ var Chart = function(trackdata, elmid, tracknr) {
         end: moment(monthStart).add('months', 4)
     };
 
-    
     var dragHandler = function() {
         if (initialX === null) {
             root.attr('dragging', 'true');
@@ -46,17 +45,15 @@ var Chart = function(trackdata, elmid, tracknr) {
         var start = moment(domain[0]).milliseconds(offsetTime);
         var end = moment(domain[1]).milliseconds(offsetTime);
 
-
-
         if (d3.event.type === 'dragend') {
             initialX = null;
             domainState = (domainState.indexOf('week') === 0 ? 'week' : 'month') + '-scrolled';
             root.attr('dragging', null);
-            d3.select('g.scrollbox').attr('transform', 'translate(0, 0)');
+            scrollbox.attr('transform', 'translate(0, 0)');
             xScale.domain([start.toDate(), end.toDate()]);
             update({duration: 1});
         } else {
-            d3.select('g.scrollbox').attr('transform', 'translate(' + -offset + ', 0)');
+            scrollbox.attr('transform', 'translate(' + -offset + ', 0)');
         }
 
         if (activeTrack) {
@@ -76,7 +73,6 @@ var Chart = function(trackdata, elmid, tracknr) {
             }
         }
     };
-
 
     var stepClickHandler = function(baseDataItem, i) {
         // if we're in month display, we  zoom in for week mode
@@ -204,7 +200,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         .attr('transform', 'translate('+ (calendarWidth) +', 0)');
     
     var weekHtml = '&#xe237; <title>Ugevisning</title>';
-    var monthHtml = '&#xe238; <title>Maånedsvisning</title>';
+    var monthHtml = '&#xe238; <title>Månedsvisning</title>';
     // toggles months/weeks
     iconGroup.append('text')
         .attr('x', -42)
@@ -273,6 +269,7 @@ var Chart = function(trackdata, elmid, tracknr) {
     var update = function(options) {
         if (options.dataitem && !activeTrack) {
             zoomGroup.transition()
+                .duration(options.duration || durationDefault)
                 .ease('quad')
                 .attr('transform', 'translate(0, 0)');
 
