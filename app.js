@@ -108,7 +108,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         e.preventDefault();
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
         domainState = (isWeek ? 'week' : 'month') + '-scrolled';
-        update({duration: 100});
+        update({duration: 150});
         return false;
     };
 
@@ -383,23 +383,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         iconGroup.selectAll('text.reset-view')
             .style('display', domainState.indexOf('scrolled') === -1 ? 'none' : 'block');
 
-        // main step animation. updates x axis + width accoding to domain
-        var steps = stepGroups.selectAll('rect.step')
-            .transition()
-            .duration(options.duration || durationDefault)
-            .attr('x', stepstart)
-            .attr('width', stepwidth);
 
-        // if we're zoomed, we might want to hide the other tracks
-        steps
-            .filter(activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)')
-            .style('display', 'none');
-
-        // and possibly shift active track down
-        steps
-            .filter(options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)')
-            .attr('y', detailsBoxHeight + padding * 2);
-        
         // timeline processing
 
         var isWeeks = domainState.indexOf('week') === 0;
@@ -430,7 +414,7 @@ var Chart = function(trackdata, elmid, tracknr) {
                 .attr('transform', defaultTransform);
 
             tickElm.append('text')
-                .attr('text-anchor', 'middle')
+                .attr('text-anchor', 'left')
                 .attr('x', 0)
                 .attr('y', -5)
                 .text(function(d) {
@@ -492,6 +476,24 @@ var Chart = function(trackdata, elmid, tracknr) {
                 .duration(options.duration || durationDefault)
                 .attr('transform', defaultTransform);
         }
+
+                // main step animation. updates x axis + width accoding to domain
+        var steps = stepGroups.selectAll('rect.step')
+            .transition()
+            .duration(options.duration || durationDefault)
+            .attr('x', stepstart)
+            .attr('width', stepwidth);
+
+        // if we're zoomed, we might want to hide the other tracks
+        steps
+            .filter(activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)')
+            .style('display', 'none');
+
+        // and possibly shift active track down
+        steps
+            .filter(options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)')
+            .attr('y', detailsBoxHeight + padding * 2);
+        
     };
 
     // call update to render initial weeks
