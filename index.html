@@ -70,21 +70,26 @@ svg[dragging="true"] .dragbox {
     cursor: grabbing;
 }
 
-.week-boxes text.weeknr-text {
+.week-box text.weeknr-text, .month-box text.month-text {
     font-family: sans-serif;
     font-weight: normal;
     font-size: 110%;
 }
 
-.week-boxes text.datespan {
+.week-box text.datespan, .month-box text.year-text {
     font-family: sans-serif;
     font-size: 80%;
 }
 
-.week-boxes text.days {
+.week-box text.days {
     font-family: sans-serif;
     font-size: 80%;
     letter-spacing: 0.91em; /* kinda hacky */ 
+}
+
+.tick-box text {
+    font-family: sans-serif;
+    font-size: 80%;
 }
 
 #calendar {

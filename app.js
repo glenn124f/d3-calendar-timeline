@@ -3,7 +3,7 @@ var Chart = function(trackdata, elmid, tracknr) {
 
     var calendarWidth = 1000;
     var calendarHeight = 180;
-    var weekboxHeight = 60;
+    var timelineHeight = 60;
     var detailsBoxHeight = 60;
     var padding = 4;
     var stepHeight = 30;
@@ -89,7 +89,72 @@ var Chart = function(trackdata, elmid, tracknr) {
         update({dataitem: baseDataItem, zoomEvent: !isWeeks});
     };
 
+    var generateWeekBoxes = function() {
+        var weekElm = this
+            .append('g')
+            .attr('class', 'week-box')
+            .attr('transform', defaultTransform);
+
+        weekElm.append('rect')
+            .attr('class', 'background')
+            .attr('width', timelineStepwidth)
+            .attr('height', timelineHeight)
+            .attr('fill', '#eee');
+
+        weekElm.append('text')
+            .attr('class', 'weeknr-text')
+            .attr('text-anchor', 'middle')
+            .attr('x', 125)
+            .attr('y', 27)
+            .text(weeknrText);
+
+        weekElm.append('text')
+            .attr('class', 'datespan')
+            .attr('text-anchor', 'middle')
+            .attr('x', 125)
+            .attr('y', 48)
+            .text(datespanText);
+
+        weekElm.append('text')
+            .attr('class', 'days')
+            .attr('y', - 5)
+            .text('M T O T F L S');
+    };
+    
+    var generateMonthBoxes = function() {
+        var monthElm = this
+            .append('g')
+            .attr('class', 'month-box')
+            .attr('transform', defaultTransform);
+
+        monthElm.append('rect')
+            .attr('class', 'background')
+            .attr('width', timelineStepwidth)
+            .attr('height', timelineHeight)
+            .attr('fill', '#eee');
+
+        monthElm.append('text')
+            .attr('class', 'month-text')
+            .attr('text-anchor', 'middle')
+            .attr('x', 125)
+            .attr('y', 27)
+            .text(monthText);
+
+        monthElm.append('text')
+            .attr('class', 'year-text')
+            .attr('text-anchor', 'middle')
+            .attr('x', 125)
+            .attr('y', 48)
+            .text(yearText);
+    };
+
     var weeknrText = function(d) { return 'UGE ' + moment(d.start).isoWeek(); };
+    var monthText = function(d) {
+        return moment(d.start).format('MMMM');
+    };
+    var yearText = function(d) {
+        return moment(d.start).format('YYYY');
+    };
     var datespanText = function(d) {
         return moment(d.start).format('DD-MM-YYYY') + ' - ' + 
             moment(d.start).add('days', 6).format('DD-MM-YYYY'); 
@@ -98,6 +163,9 @@ var Chart = function(trackdata, elmid, tracknr) {
     var stepstart = function(d) { return xScale(d.start); };
     var stepwidth = function(d) { 
         return xScale(d.end) - xScale(d.start) + 0.3; // removes figde of pixel gap 
+    };
+    var timelineStepwidth = function(d) {
+        return xScale(d.end) - xScale(d.start) - 3;
     };
     var stepmidweek = function (d) {
         return xScale(moment(d.start).add('hours', 3.5*24).toDate());
@@ -108,6 +176,10 @@ var Chart = function(trackdata, elmid, tracknr) {
     var trackY = function(d, i) { 
         return (d.track * stepHeight) + (d.track * padding); 
     };
+    // used for main week animations
+    var defaultTransform = function(d) {
+        return 'translate({0}, {1})'.f(stepstart(d), calendarHeight - timelineHeight);
+    }
 
     var zoomGroupCloser = function() {
         // fade box out in place, then shift and show again, to be ready for next zoom
@@ -168,6 +240,7 @@ var Chart = function(trackdata, elmid, tracknr) {
     // timeline groups
     var weekGroup = scrollbox.append('g').attr('class', 'week-container');
     var monthGroup = scrollbox.append('g').attr('class', 'month-container');
+    var tickGroup = scrollbox.append('g').attr('class', 'tick-container');
 
     // binds tracks data once
     var stepGroups = scrollbox.selectAll('g.step')
@@ -189,8 +262,8 @@ var Chart = function(trackdata, elmid, tracknr) {
     root.append('rect')
         .attr('class', 'dragbox')
         .attr('width', calendarWidth)
-        .attr('height', weekboxHeight + 30)
-        .attr('y', calendarHeight - weekboxHeight - 15)
+        .attr('height', timelineHeight + 30)
+        .attr('y', calendarHeight - timelineHeight - 15)
         .attr('fill', 'transparent')
         .call(dragBehavior);
 
@@ -261,8 +334,6 @@ var Chart = function(trackdata, elmid, tracknr) {
         .attr('x', calendarWidth-80)
         .attr('y', detailsBoxHeight/2 + 30)
         .html('&#xe212;');
-    
-
 
     ////////////////////////////////////////////////////////////////////////////
     // call after setting domain, to update visuals
@@ -305,64 +376,50 @@ var Chart = function(trackdata, elmid, tracknr) {
             .filter(options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)')
             .attr('y', detailsBoxHeight + padding * 2);
         
-        // do timeline animations now
-        updateTimeline(options);
-    };
+        // timeline processing
 
-    ////////////////////////////////////////////////////////////////////////////
-    // renders the week/month timeline
-    var updateTimeline = function(options) {
         var isWeeks = domainState.indexOf('week') === 0;
         var weekData = generateTimelineUnits(xScale);
         var monthData = generateTimelineUnits(xScale, true);
-        // used for main week animations
-        var defaultTransform = function(d) {
-            return 'translate({0}, {1})'.f(stepstart(d), calendarHeight - weekboxHeight);
-        }
-        // we only bind when we're in weeks mode
-        if (isWeeks) {
-            var weeks = weekGroup.selectAll('g.week-boxes')
-                .data(weekData, function(d) { return d.start; });
+        var weekTickData = generateTimelineUnits(xScale, false, true);
 
-            var weekElm = weeks.enter()
+        if (isWeeks) {
+            var weeks = weekGroup.selectAll('g.week-box')
+                .data(weekData, function(d) { return d.start; });
+            weeks.enter().call(generateWeekBoxes);
+            weeks.exit().remove();
+
+            // selection for possibly animating out
+            var months = monthGroup.selectAll('g.month-box');
+            var ticks = tickGroup.selectAll('g.tick-box');
+        } else {
+            var weeks = weekGroup.selectAll('g.week-box');
+            var months = monthGroup.selectAll('g.month-box')
+                .data(monthData, function(d) { return d.start; });
+
+            var ticks = tickGroup.selectAll('g.tick-box')
+                .data(weekTickData, function(d) { return d.start; });
+
+            var tickElm = ticks.enter()
                 .append('g')
-                .attr('class', 'week-boxes')
+                .attr('class', 'tick-box')
                 .attr('transform', defaultTransform);
 
-            weekElm.append('rect')
-                .attr('class', 'background')
-                .attr('width', 246)
-                .attr('height', weekboxHeight)
-                .attr('fill', '#eee');
-
-            weekElm.append('text')
-                .attr('class', 'weeknr-text')
+            tickElm.append('text')
                 .attr('text-anchor', 'middle')
-                .attr('x', 125)
-                .attr('y', 27)
-                .text(weeknrText);
+                .attr('x', 0)
+                .attr('y', -5)
+                .text(function(d) {
+                    return moment(d.start).isoWeek();
+                });
 
-            weekElm.append('text')
-                .attr('class', 'datespan')
-                .attr('text-anchor', 'middle')
-                .attr('x', 125)
-                .attr('y', 48)
-                .text(datespanText);
-
-            weekElm.append('text')
-                .attr('class', 'days')
-                .attr('y', - 5)
-                .text('M T O T F L S');
-
-            weeks.exit().remove();
-        } else {
-            var weeks = weekGroup.selectAll('g.week-boxes');
-
+            ticks.exit().remove();
+            months.enter().call(generateMonthBoxes);
+            months.exit().remove();
         }
 
         // decide animation when zooming in or out
         if (options.zoomEvent && isWeeks) {
-            console.log('updateWeeks.zoom to weeks');
             // from months to weeks
             weeks
                 .style('display', 'block')
@@ -371,24 +428,30 @@ var Chart = function(trackdata, elmid, tracknr) {
                 .transition()
                 .duration(options.duration || durationDefault)
                 .style('opacity', 1);
+            months
+                .style('display', 'none');
+            ticks
+                .style('display', 'none');
         } else if (options.zoomEvent) {
-            console.log('updateWeeks.zoom to months');
             // from weeks to months
-            weeks
+            months
+                .style('display', 'block')
+                .attr('transform', defaultTransform)
+                .style('opacity', 0) // sets up animation
                 .transition()
                 .duration(options.duration || durationDefault)
-                .attr('transform', function(d) {
-                    // since we didn't rebind, all groups should have a proper transform set
-                    var transform = d3.select(this).attr('transform').substring(10);
-                    var transformX = parseFloat(transform, 10);
-                    return 'translate({0}, {1})'.f(transformX, calendarHeight + 20);
-                })
-                .each('end', function() {
-                    d3.select(this)
-                        .style('display', 'none');
-                });
+                .style('opacity', 1);
+            ticks
+                .style('display', 'block')
+                .attr('transform', defaultTransform)
+                .style('opacity', 0) // sets up animation
+                .transition()
+                .duration(options.duration || durationDefault)
+                .style('opacity', 1);
+
+            weeks
+                .style('display', 'none');
         } else if (isWeeks) {
-            console.log('updateWeeks.main weeeks');
             // weeks animation
             weeks
                 .transition()
@@ -396,7 +459,14 @@ var Chart = function(trackdata, elmid, tracknr) {
                 .attr('transform', defaultTransform);
         } else {
             // months animation
-
+            months
+                .transition()
+                .duration(options.duration || durationDefault)
+                .attr('transform', defaultTransform);
+            ticks
+                .transition()
+                .duration(options.duration || durationDefault)
+                .attr('transform', defaultTransform);
         }
     };
 
