@@ -1,0 +1,15 @@
+{
+    "folders":
+    [
+        {
+            "file_include_patterns": ["*.js", "*.json", "*.html", "*.sublime-project"],
+            "folder_exclude_patterns": ["*"],
+            "path": "."
+        }
+    ],
+    "settings":
+    {
+        "translate_tabs_to_spaces": true,
+        "tab_size": 4
+    }
+}
