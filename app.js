@@ -9,6 +9,8 @@ var Chart = function(trackdata, elmid, tracknr) {
     var stepHeight = 30;
     var iconOffset = 40;
     var durationDefault = 250;
+    // in order to avoid shifting the number of days in the month display, we use a fixed number of days
+    var monthInDays = 122; 
     // state variables 
     var activeTrack = null; // stores the current track data    
     var domainState = 'week-default'; // week/month-default/scrolled
@@ -25,7 +27,7 @@ var Chart = function(trackdata, elmid, tracknr) {
     var monthStart = moment().date(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('months', -1);
     var monthDomain = {
         start: moment(monthStart).toDate(),
-        end: moment(monthStart).add('months', 4)
+        end: moment(monthStart).add('days', monthInDays)
     };
 
     var dragHandler = function() {
@@ -87,6 +89,27 @@ var Chart = function(trackdata, elmid, tracknr) {
         var newEnd = moment(newStart).add('weeks', 4);
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
         update({dataitem: baseDataItem, zoomEvent: !isWeeks});
+    };
+
+    var scrollHandler = function() {
+        var e = d3.event;
+        var scrolledUp = e.wheelDelta > 0;
+        var isWeek = domainState.indexOf('week') === 0;
+        var domain = xScale.domain();
+        var shift = (scrolledUp ? 1: -1) * (isWeek ? 4 : 10);
+        var newStart = moment(domain[0]).add('days', shift);
+        var newEnd = moment(newStart);
+        if (isWeek) {
+            newEnd.add('weeks', 4);
+        } else {
+            newEnd.add('days', monthInDays);
+        }
+
+        e.preventDefault();
+        xScale.domain([newStart.toDate(), newEnd.toDate()]);
+        domainState = (isWeek ? 'week' : 'month') + '-scrolled';
+        update({duration: 100});
+        return false;
     };
 
     var generateWeekBoxes = function() {
@@ -216,6 +239,7 @@ var Chart = function(trackdata, elmid, tracknr) {
     // startup processing, create data elms, ui containers, etc
 
     var root = d3.select('#' + elmid).append('svg');
+    root.on('mousewheel', scrollHandler);
 
     // main step data and timeline container, most stuff in here animate 
     // according to the x domain.
@@ -282,7 +306,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         .html(monthHtml)
         .on('click', function() {
             var toMonths = domainState.indexOf('week') === 0;
-            xScale.domain(toMonths ? getMonthDomain(xScale) : getWeekDomain(xScale));
+            xScale.domain(toMonths ? getMonthDomain(xScale, monthInDays) : getWeekDomain(xScale));
             domainState = toMonths ? 'month-default' : 'week-default';
             d3.select(this).html(toMonths ? weekHtml : monthHtml);
             update({zoomEvent: true});
@@ -380,7 +404,7 @@ var Chart = function(trackdata, elmid, tracknr) {
 
         var isWeeks = domainState.indexOf('week') === 0;
         var weekData = generateTimelineUnits(xScale);
-        var monthData = generateTimelineUnits(xScale, true);
+        var monthData = generateTimelineUnits(xScale, true, false, !isWeeks);
         var weekTickData = generateTimelineUnits(xScale, false, true);
 
         if (isWeeks) {

@@ -65,12 +65,12 @@ var generateData = function() {
 
 
 // generates timeline boxes on the fly ...
-var generateTimelineUnits = function(scale, months, ticks) {
+var generateTimelineUnits = function(scale, months, ticks, debug) {
     var units = [];
     var current = scale.domain();
 
     // add x weeks padding to the durrent domain, can be scrolled into view by drag
-    var padding = 20;
+    var padding = 15;
     var factor = 2; 
     var domainUnit = months ? 'months' : 'weeks';
     var start = moment(current[0]);
@@ -87,19 +87,24 @@ var generateTimelineUnits = function(scale, months, ticks) {
     while (added < padding*factor+4) {
         units.push({
             start: moment(start).toDate(),
-            end: moment(start).add(domainUnit, 1).toDate()
+            startM: moment(start),
+            end: moment(start).add(domainUnit, 1).toDate(),
+            endM: moment(start).add(domainUnit, 1)
         });
+        if (debug) {
+            console.log('generateTimelineUnits', units[units.length-1].endM.date());
+        }
         start.add(domainUnit, 1);
         added++;
     }
     return units;
 };
 
-var getMonthDomain = function(weekScale) {
+var getMonthDomain = function(weekScale, monthDays) {
     var domain = weekScale.domain();
     var currentMid = moment(domain[0]).add('days', 14);
     var newStart = moment(currentMid).add('months', -2);
-    var newEnd = moment(newStart).add('months', 4);
+    var newEnd = moment(newStart).add('days', monthDays);
     return [newStart.toDate(), newEnd.toDate()];
 };
 
