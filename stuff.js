@@ -1,3 +1,15 @@
+if (!String.prototype.format) {
+  String.prototype.format = String.prototype.f= function() {
+    var args = arguments;
+    return this.replace(/{(\d+)}/g, function(match, number) { 
+      return typeof args[number] != 'undefined'
+        ? args[number]
+        : match
+      ;
+    });
+  };
+}
+
 var generateData = function() {
     function randomColor(brightness){
       function randomChannel(brightness){
@@ -48,7 +60,6 @@ var generateData = function() {
         }
         track++;
     }
-    console.log(data)
     return data;
 };
 

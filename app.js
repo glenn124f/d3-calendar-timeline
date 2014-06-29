@@ -7,11 +7,9 @@ var Chart = function(trackdata, elmid, tracknr) {
     var detailsBoxHeight = 60;
     var padding = 4;
     var stepHeight = 30;
-
     var iconOffset = 40;
-
+    var durationDefault = 250;
     // state variables 
-    var zoomGroup = null; // svg group elm is dynamically created when zooming in
     var activeTrack = null; // stores the current track data    
     var domainState = 'week-default'; // week/month-default/scrolled
 
@@ -129,7 +127,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         var newStart = midstepDate.add('weeks', -2);
         var newEnd = moment(newStart).add('weeks', 4);
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
-        update({dataitem: baseDataItem, zoom: true});
+        update({dataitem: baseDataItem, zoomEvent: !isWeeks});
     };
 
     var zoomGroupCloser = function() {
@@ -163,7 +161,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         activeTrack = null;
     };
 
-    var weekGroups = svg.append('g').attr('class', 'week-container');
+    var weekGroup = svg.append('g').attr('class', 'week-container');
 
     // binds tracks data once
     var stepGroups = svg.selectAll('g.step')
@@ -207,7 +205,7 @@ var Chart = function(trackdata, elmid, tracknr) {
             xScale.domain(toMonths ? getMonthDomain(xScale) : getWeekDomain(xScale));
             domainState = toMonths ? 'month-default' : 'week-default';
             d3.select(this).html(toMonths ? weekHtml : monthHtml);
-            update({});
+            update({zoomEvent: true});
         });
 
     // resets to default view
@@ -222,45 +220,139 @@ var Chart = function(trackdata, elmid, tracknr) {
             var isWeeks = domainState.indexOf('week') === 0;
             var newDomain = isWeeks ? [domainDefault.start, domainDefault.end] :
                                       [monthDomain.start, monthDomain.end]; 
+            
             xScale.domain(newDomain);
             domainState = isWeeks ? 'week-default' : 'month-default';
             update({});
         });
 
-    // call after setting domain, to update visuals
-    var update = function(options) {
-        console.log('update.domainState', domainState);
-        // we create the zoom layer only the first time
-        if (options.dataitem && !zoomGroup) {
-            zoomGroup = d3.select('svg')
+    // details box
+    var zoomGroup = d3.select('svg')
+        .append('g')
+        .attr('class', 'zoom-group')
+        .attr('transform', 'translate(0, '+ (-calendarHeight) +')');
+
+    zoomGroup.append('rect')
+        .on('click', zoomGroupCloser)
+        .attr('class', 'details-box')
+        .attr('width', calendarWidth - 200)
+        .attr('height', detailsBoxHeight)
+        .attr('y', 0)
+        .attr('x', 100)
+        .attr('fill', 'white')
+        .attr('stroke', 'silver')
+        .attr('stroke-width', 1);
+
+    zoomGroup.append('text')
+        .attr('class', 'zoom-pan-btn icon')
+        .attr('x', 20)
+        .attr('y', detailsBoxHeight/2 + 30)
+        .html('&#xe211;');
+
+    zoomGroup.append('text')
+        .attr('class', 'zoom-pan-btn icon')
+        .attr('x', calendarWidth-80)
+        .attr('y', detailsBoxHeight/2 + 30)
+        .html('&#xe212;');
+    
+    ////////////////////////////////////////////////////////////////////////
+    // renders the week/month timeline
+    var updateWeeks = function(options) {
+        var isWeeks = domainState.indexOf('week') === 0;
+        var weekBoxes = generateWeeks(xScale);
+        // used for main week animations
+        var defaultTransform = function(d) {
+            return 'translate({0}, {1})'.f(stepstart(d), calendarHeight - weekboxHeight);
+        }
+        // we only bind when we're in weeks mode
+        if (isWeeks) {
+            var weeks = weekGroup.selectAll('g.week-boxes')
+                .data(weekBoxes, function(d) { return d.start; });
+
+            // create week boxes 
+            // todo: creating boxes with no animation can causes some issues
+            // when centering on default date, since those week boxes are not
+            // currently generated, they will not get animated, since the creation
+            // breanch here doesn't set up an animation. (need to check on options.zoomEvent, etc)
+            var weekElm = weeks.enter()
                 .append('g')
-                .attr('class', 'zoom-group')
-                .attr('transform', 'translate(0, '+ (-calendarHeight) +')');
-        
-            zoomGroup.append('rect')
-                .on('click', zoomGroupCloser)
-                .attr('class', 'details-box')
-                .attr('width', calendarWidth - 200)
-                .attr('height', detailsBoxHeight)
-                .attr('y', 0)
-                .attr('x', 100)
-                .attr('fill', 'white')
-                .attr('stroke', 'silver')
-                .attr('stroke-width', 1);
+                .attr('class', 'week-boxes')
+                .attr('transform', defaultTransform);
 
-            zoomGroup.append('text')
-                .attr('class', 'zoom-pan-btn icon')
-                .attr('x', 20)
-                .attr('y', detailsBoxHeight/2 + 30)
-                .html('&#xe211;');
+            weekElm.append('rect')
+                .attr('class', 'background')
+                .attr('width', 246)
+                .attr('height', weekboxHeight)
+                .attr('fill', '#eee');
 
-            zoomGroup.append('text')
-                .attr('class', 'zoom-pan-btn icon')
-                .attr('x', calendarWidth-80)
-                .attr('y', detailsBoxHeight/2 + 30)
-                .html('&#xe212;');
+            weekElm.append('text')
+                .attr('class', 'weeknr-text')
+                .attr('text-anchor', 'middle')
+                .attr('x', 125)
+                .attr('y', 27)
+                .text(weeknrText);
+
+            weekElm.append('text')
+                .attr('class', 'datespan')
+                .attr('text-anchor', 'middle')
+                .attr('x', 125)
+                .attr('y', 48)
+                .text(datespanText);
+
+            weekElm.append('text')
+                .attr('class', 'days')
+                .attr('y', - 5)
+                .text('M T O T F L S');
+
+            weeks.exit().remove();
+        } else {
+            var weeks = weekGroup.selectAll('g.week-boxes');
         }
 
+        // decide animation when zooming in or out
+        if (options.zoomEvent && isWeeks) {
+            console.log('updateWeeks.zoom to weeks');
+            // from months to weeks
+            weeks
+                .style('display', 'block')
+                .attr('transform', defaultTransform)
+                .style('opacity', 0) // sets up animation
+                .transition()
+                .duration(options.duration || durationDefault)
+                .style('opacity', 1);
+        } else if (options.zoomEvent) {
+            console.log('updateWeeks.zoom to months');
+            // from weeks to months
+            weeks
+                .transition()
+                .duration(options.duration || durationDefault)
+                .attr('transform', function(d) {
+                    // since we didn't rebind, all groups should have a proper transform set
+                    var transform = d3.select(this).attr('transform').substring(10);
+                    var transformX = parseFloat(transform, 10);
+                    return 'translate({0}, {1})'.f(transformX, calendarHeight + 20);
+                })
+                .each('end', function() {
+                    d3.select(this)
+                        .style('display', 'none');
+                });
+        } else if (isWeeks) {
+            console.log('updateWeeks.main weeeks');
+            // weeks animation
+            weeks
+                .transition()
+                .duration(options.duration || durationDefault)
+                .attr('transform', defaultTransform);
+        } else {
+            // months animation
+        }
+
+
+    };
+
+    ////////////////////////////////////////////////////////////////////////
+    // call after setting domain, to update visuals
+    var update = function(options) {
         if (options.dataitem && !activeTrack) {
             zoomGroup.transition()
                 .ease('quad')
@@ -285,20 +377,12 @@ var Chart = function(trackdata, elmid, tracknr) {
         var activeTrackFilter = options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)';
         var inactiveTrackFilter = activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)';
 
-        var weekBoxes = generateWeeks(xScale);
-        var weeks = weekGroups.selectAll('g.week-boxes')
-            .data(weekBoxes, function(d) { return d.start; });
 
-        // week box animation needs to close the options (viewtoggle)
-        var stepstartTransform = function(d) { 
-            var extra = domainState.indexOf('month') === 0 ? 80 : 0;
-            return 'translate(' + stepstart(d) + ', ' + (calendarHeight - weekboxHeight + extra) + ')'; 
-        };
 
         // main step animation. updates x axis accoding to domain
         var steps = stepGroups.selectAll('rect.step')
             .transition()
-            .duration(options.duration || 250)
+            .duration(options.duration || durationDefault)
             .attr('x', stepstart);
 
         // if we're zoomed, we might want to hide the other tracks
@@ -310,52 +394,13 @@ var Chart = function(trackdata, elmid, tracknr) {
         steps
             .filter(options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)')
             .attr('y', detailsBoxHeight + padding * 2);
-
-        // main week box scroll animation (transform on group)
-        weeks
-            .transition()
-            .duration(options.duration || 250)
-            .attr('transform', stepstartTransform);
-
-        // create week boxes 
-        var weekElm = weeks.enter()
-            .append('g')
-            .attr('class', 'week-boxes')
-            .attr('transform', stepstartTransform);
-
-        weekElm.append('rect')
-            .attr('class', 'background')
-            .attr('width', 246)
-            .attr('height', weekboxHeight)
-            .attr('fill', '#eee');
-
-        weekElm.append('text')
-            .attr('class', 'weeknr-text')
-            .attr('text-anchor', 'middle')
-            .attr('x', 125)
-            .attr('y', 27)
-            .text(weeknrText);
-
-        weekElm.append('text')
-            .attr('class', 'datespan')
-            .attr('text-anchor', 'middle')
-            .attr('x', 125)
-            .attr('y', 48)
-            .text(datespanText);
-
-        weekElm.append('text')
-            .attr('class', 'days')
-            .attr('y', - 5)
-            .text('M T O T F L S');
-
-
-        weeks.exit().remove();
         
+
+        updateWeeks(options);
     };
 
     // call update to render initial weeks
     update({duration: 1});
-
 };
 
 var chart = new Chart(generateData(), 'calendar');
