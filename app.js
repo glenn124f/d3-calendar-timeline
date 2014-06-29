@@ -92,18 +92,18 @@ var Chart = function(trackdata, elmid, tracknr) {
     var weeknrText = function(d) { return 'UGE ' + moment(d.start).isoWeek(); };
     var datespanText = function(d) {
         return moment(d.start).format('DD-MM-YYYY') + ' - ' + 
-            moment(d.start).hours(6*24).format('DD-MM-YYYY'); 
+            moment(d.start).add('days', 6).format('DD-MM-YYYY'); 
     };
 
     var stepstart = function(d) { return xScale(d.start); };
     var stepwidth = function(d) { 
-        return xScale(d.end) - xScale(d.start) - padding; 
+        return xScale(d.end) - xScale(d.start) + 0.3; // removes figde of pixel gap 
     };
     var stepmidweek = function (d) {
-        return xScale(moment(d.start).hours(3.5*24).toDate());
+        return xScale(moment(d.start).add('hours', 3.5*24).toDate());
     };
     var stepweek = function(d) {
-        return xScale(moment(d.start).hours(7*24).toDate()) - xScale(d.start) - padding;
+        return xScale(moment(d.start).add('days', 7).toDate()) - xScale(d.start) - padding;
     };
     var trackY = function(d, i) { 
         return (d.track * stepHeight) + (d.track * padding); 
@@ -288,15 +288,12 @@ var Chart = function(trackdata, elmid, tracknr) {
         iconGroup.selectAll('text.reset-view')
             .style('display', domainState.indexOf('scrolled') === -1 ? 'none' : 'block');
 
-        // filters used to toggle visuals. 
-        var activeTrackFilter = options.dataitem ? '[track="'+ options.dataitem.track +'"]' : ':not(*)';
-        var inactiveTrackFilter = activeTrack ? ':not([track="' + activeTrack.nr + '"])' : ':not(*)';
-
-        // main step animation. updates x axis accoding to domain
+        // main step animation. updates x axis + width accoding to domain
         var steps = stepGroups.selectAll('rect.step')
             .transition()
             .duration(options.duration || durationDefault)
-            .attr('x', stepstart);
+            .attr('x', stepstart)
+            .attr('width', stepwidth);
 
         // if we're zoomed, we might want to hide the other tracks
         steps
