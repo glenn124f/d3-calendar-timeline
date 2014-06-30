@@ -63,6 +63,15 @@ var generateData = function() {
     return data;
 };
 
+var getItemIndexByDate = function(items, date) {
+    for(var i = 0; i < items.length; i++) {
+        // console.log('i', i, items[i].startM.isBefore(date), items[i].endM.isAfter(date));
+        if (items[i].startM.isBefore(date) && items[i].endM.isAfter(date)) {
+            return i;
+        }
+    }
+    return null;
+};
 
 // generates timeline boxes on the fly ...
 var generateTimelineUnits = function(scale, months, ticks, debug) {

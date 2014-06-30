@@ -96,14 +96,40 @@ var Chart = function(trackdata, elmid, tracknr) {
         var scrolledUp = e.wheelDelta > 0;
         var isWeek = domainState.indexOf('week') === 0;
         var domain = xScale.domain();
-        var shift = (scrolledUp ? 1: -1) * (isWeek ? 4 : 10);
-        var newStart = moment(domain[0]).add('days', shift);
-        var newEnd = moment(newStart);
-        if (isWeek) {
-            newEnd.add('weeks', 4);
+        var midDate = moment(xScale.invert((xScale(domain[0]) + xScale(domain[1])) / 2));
+        var data = activeTrack && activeTrack.data || [];
+        var idx = getItemIndexByDate(data, midDate) + (scrolledUp ? 1 : -1);
+        
+        if (activeTrack && idx >= 0 && idx < activeTrack.data.length) {
+            // shift to focus on next/previous item in focused track
+            var newItem = activeTrack.data[idx];
+            var newStart = moment(xScale.invert((xScale(newItem.start) + xScale(newItem.end)) / 2));
+            if (isWeek) {
+                newStart.add('weeks', -2);
+            } else {
+                newStart.add('days', -(monthInDays/2));
+            }
+            var newEnd = moment(newStart);
+            if (isWeek) {
+                newEnd.add('weeks', 4);
+            } else {
+                newEnd.add('days', monthInDays);
+            }
         } else {
-            newEnd.add('days', monthInDays);
+            var shift = (scrolledUp ? 1: -1) * (isWeek ? 4 : 10);
+            var newStart = moment(domain[0]).add('days', shift);
+            var newEnd = moment(newStart);
+            if (isWeek) {
+                newEnd.add('weeks', 4);
+            } else {
+                newEnd.add('days', monthInDays);
+            }
         }
+
+
+
+
+
 
         e.preventDefault();
         xScale.domain([newStart.toDate(), newEnd.toDate()]);
