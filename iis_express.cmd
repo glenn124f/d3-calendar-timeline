@@ -1,3 +1,3 @@
+REM assumes current directory is project root directory
 SET IISEDIR=C:\Program Files (x86)\IIS Express\
-"%IISEDIR%\iisexpress.exe" /path:%CD% /port:8080
-PAUSE
+"%IISEDIR%\iisexpress.exe" /config:applicationhost.config /site:WebSite1

@@ -7,7 +7,11 @@ function ChartTimeline(options) {
         self.svg.icons.selectAll('text.reset-view')
             .style('display', self.isScrolled() ? 'block' : 'none');
 
-        // timeline processing
+        // render skips all animations
+        var duration = options.type === 'render' ? 1 : 
+            (options.type && options.type.indexOf('scroll') === 0) ? 100 : 250;
+        
+        // timeline data
         var weekData = self.generateTimelineUnits();
         var monthData = self.generateTimelineUnits(true, false);
         var weekTickData = self.generateTimelineUnits(false, true);
@@ -19,11 +23,11 @@ function ChartTimeline(options) {
         // bind appropiate domain data
         if (self.isWeeks()) {
             weeks = weeks.data(weekData, function(d) { return d.start; });
-            weeks.enter().call(self.generateWeekBoxes);
+            weeks.enter().call(self.generateWeekbox);
             weeks.exit().remove();
         } else {
             months = months.data(monthData, function(d) { return d.start; });
-            months.enter().call(self.generateMonthBoxes);
+            months.enter().call(self.generateMonthbox);
             months.exit().remove();
 
             ticks = ticks.data(weekTickData, function(d) { return d.start; });
@@ -40,34 +44,34 @@ function ChartTimeline(options) {
                 });
             ticks.exit().remove();
         }
-        if (options.zoomEvent && self.isWeeks()) {
+        if (options.type === 'zoom-in' && self.isWeeks()) {
             // from months to weeks
             weeks
                 .style('display', 'block')
                 .attr('transform', self.defaultTransform)
                 .style('opacity', 0) // sets up animation
                 .transition()
-                .duration(options.duration || self.style.durationDefault)
+                .duration(duration)
                 .style('opacity', 1);
             months
                 .style('display', 'none');
             ticks
                 .style('display', 'none');
-        } else if (options.zoomEvent) {
+        } else if (options.type === 'zoom-out') {
             // from weeks to months
             months
                 .style('display', 'block')
                 .attr('transform', self.defaultTransform)
                 .style('opacity', 0) // sets up animation
                 .transition()
-                .duration(options.duration || self.style.durationDefault)
+                .duration(duration)
                 .style('opacity', 1);
             ticks
                 .style('display', 'block')
                 .attr('transform', self.defaultTransform)
                 .style('opacity', 0) // sets up animation
                 .transition()
-                .duration(options.duration || self.style.durationDefault)
+                .duration(duration)
                 .style('opacity', 1);
 
             weeks
@@ -76,43 +80,36 @@ function ChartTimeline(options) {
             // weeks animation
             weeks
                 .transition()
-                .duration(options.duration || self.style.durationDefault)
+                .duration(duration)
                 .attr('transform', self.defaultTransform);
         } else {
             // months animation
             months
                 .transition()
-                .duration(options.duration || self.style.durationDefault)
+                .duration(duration)
                 .attr('transform', self.defaultTransform);
             ticks
                 .transition()
-                .duration(options.duration || self.style.durationDefault)
+                .duration(duration)
                 .attr('transform', self.defaultTransform);
         }
 
         // main step animation. updates x axis + width accoding to domain
-        var steps = self.svg.steps.selectAll('rect.step')
+        var steps = self.svg.steps
             .transition()
-            .duration(options.duration || self.style.durationDefault)
-            .attr('x', self.stepstart)
+            .duration(duration)
+            .attr('transform', self.stepsTransform)
+            .selectAll('rect')
             .attr('width', self.stepwidth);
+
     };
+
 
     self.constructTimelineSvg = function() {
         // tracks data
         self.svg.steps = self.svg.scrollbox.selectAll('g.step')
             .data(options.data)
-            .enter().append('g');
-
-        self.svg.steps.append('rect')
-            .attr('class', 'step')
-            .attr('track', function(d) { return d.track; })
-            .attr('x', self.stepstart)
-            .attr('y', self.trackY)
-            .attr('width', self.stepwidth)
-            .attr('height', self.style.stepHeight)
-            .attr('fill', function(d) { return d.color; })
-            .on('click', self.stepClickHandler);
+            .enter().append('g').call(self.generateStepElm);
     };
 };
 ChartTimeline.prototype = Object.create(ChartBase.prototype);

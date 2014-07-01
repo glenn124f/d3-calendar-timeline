@@ -2,7 +2,7 @@ function ChartEvents(options) {
     ChartTimeline.call(this, options);
     var self = this;
 
-    self.dragHandler = function() {
+    var dragHandler = function() {
         if (self.state.initialX === null) {
             self.svg.root.attr('dragging', 'true');
             self.state.initialX = d3.event.sourceEvent.screenX;
@@ -25,32 +25,73 @@ function ChartEvents(options) {
             self.svg.root.attr('dragging', null);
             self.svg.scrollbox.attr('transform', 'translate(0, 0)');
             self.scale.x.domain([start.toDate(), end.toDate()]);
-            self.update({duration: 1});
+            self.update({type: 'render'});
         } else {
             self.svg.scrollbox.attr('transform', 'translate(' + -offset + ', 0)');
         }
     };
 
-    self.dragBehavior = d3.behavior.drag()
-        .on('drag', self.dragHandler)
-        .on('dragend', self.dragHandler);
+    var scrollHandler = function() {
+        var scrolledUp = d3.event.wheelDelta > 0;
+        var x = self.scale.x;
+        var domain = x.domain();
+        var midDate = moment(x.invert((x(domain[0]) + x(domain[1])) / 2));
 
-    var weekHtml = '&#xe237; <title>Ugevisning</title>';
-    var monthHtml = '&#xe238; <title>Månedsvisning</title>';
+        var shift = (scrolledUp ? 1: -1) * (self.isWeeks() ? 4 : 10);
+        var newStart = moment(domain[0]).add('days', shift);
+        var newEnd = moment(newStart);
+        if (self.isWeeks()) {
+            newEnd.add('weeks', 4);
+        } else {
+            newEnd.add('days', self.monthInDays);
+        }
+
+        d3.event.preventDefault();
+        x.domain([newStart.toDate(), newEnd.toDate()]);
+        self.setScrolled(true);
+        self.update({type: 'scroll-' + (scrolledUp ? 'right' : 'left')});
+        return false;
+    };    
+
+    self.dragBehavior = d3.behavior.drag()
+        .on('drag', dragHandler)
+        .on('dragend', dragHandler);
+
+    // code points for IE9 only
+    var codepoints = { zoomPlus: '\ue238', zoomMinus: '\ue237', reset: '\ue435' };
+    var htmls = {
+        zoomMinus: '&#xe238; <title>Månedsvisning</title>',
+        zoomPlus: '&#xe237; <title>Ugevisning</title>',
+        reset: '&#xe435; <title>Gå til til dags dato</title>'
+    };
 
     self.iconZoomClick = function() {
-        d3.select(this).html(self.isWeeks() ? weekHtml : monthHtml);
-        self.domainToggle();
-        self.update({zoomEvent: true});
+        var domain = self.scale.x.domain();
+        var start = moment(domain[0]);
+        var end = moment(domain[1]);
+        var isWeeks = self.isWeeks(); // going to months
+
+        var currentMid = isWeeks ? start.add('days', 14) : start.add('months', 2);
+        var newStart = isWeeks ? moment(currentMid).add('months', -2) : moment(currentMid).add('weeks', -2);
+        var newEnd = isWeeks ? moment(newStart).add('days', self.monthInDays) : moment(newStart).add('weeks', 4);
+        var cp = isWeeks ? codepoints.zoomPlus : codepoints.zoomMinus;
+        var markup = self.isWeeks() ? htmls.zoomPlus : htmls.zoomMinus;
+
+        d3.select(this).text(cp).html(markup);
+        self.scale.x.domain([newStart.toDate(), newEnd.toDate()]);
+        self.setWeeks(!isWeeks);
+        self.update({type: 'zoom-' + (isWeeks ? 'out' : 'in')});
     };
 
     self.iconResetClick = function() {
         self.scale.x.domain(self.isWeeks() ? self.domainDefaults.weeks : self.domainDefaults.months);
         self.setScrolled(false);
-        self.update({});        
+        self.update({});
     };
 
     self.constructEventsElm = function() {
+        self.svg.root.on('mousewheel', scrollHandler);
+
         // rect that handles dragging
         self.svg.root.append('rect')
             .attr('class', 'dragbox')
@@ -65,7 +106,9 @@ function ChartEvents(options) {
             .attr('x', -42)
             .attr('y', self.style.iconOffset)
             .attr('class', 'icon')
-            .html(monthHtml)
+            .text(codepoints.zoomMinus)
+            .html(htmls.zoomMinus)
+            .attr('title', 'foobar')
             .on('click', self.iconZoomClick);
 
         // resets to default view
@@ -75,7 +118,8 @@ function ChartEvents(options) {
             .attr('y', self.style.iconOffset + 40)
             .attr('class', 'icon reset-view')
             .style('display', 'none')
-            .html('&#xe435; <title>Gå til til dags dato</title>')
+            .text(codepoints.reset)
+            .html(htmls.reset)
             .on('click', self.iconResetClick);
     };
 
@@ -83,7 +127,7 @@ function ChartEvents(options) {
     self.constructTimelineSvg();
     self.constructEventsElm();
     // run once to draw initial dynamic data (timeline)
-    self.update({duration: 1});
+    self.update({type: 'render'});
 
 }
 ChartEvents.prototype = Object.create(ChartTimeline.prototype);

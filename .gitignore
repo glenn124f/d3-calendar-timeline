@@ -1,5 +1,6 @@
 node_modules
 fonts
+applicationhost.config
 *.sublime-workspace
 # Windows image file caches
 Thumbs.db

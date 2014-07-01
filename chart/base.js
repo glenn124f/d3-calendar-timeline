@@ -1,4 +1,5 @@
-// Contains base variables and state, along scale helper functions,
+// Contains base variables and state, along with scale and constructor functions,
+// which also contains most formatting/presentations parameter constants.
 function ChartBase(options) {
     var self = this; // alias for closures
 
@@ -12,13 +13,13 @@ function ChartBase(options) {
         initialX: null
     };
 
-    var domainStart = moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('days', -7);
+    var weekStart = moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('days', -7);
     var monthStart = moment().date(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('months', -1);
 
     // 0:weeks, 1:months
     self.domainDefaults = {
-        weeks: [domainStart.toDate(), moment(domainStart).add('weeks', 4).toDate()],
-        months: [moment(monthStart).toDate(), moment(monthStart).add('days', self.monthInDays)]
+        weeks: [weekStart.toDate(), moment(weekStart).add('weeks', 4).toDate()],
+        months: [monthStart.toDate(), moment(monthStart).add('days', self.monthInDays)]
     };
 
     self.style = {
@@ -133,6 +134,10 @@ function ChartBase(options) {
     self.stepstart = function(d) { 
         return self.scale.x(d.start); 
     };
+
+    self.textStepstart = function(d) {
+        return self.stepstart(d) + 5;
+    };
     
     self.stepwidth = function(d) {
 
@@ -154,13 +159,23 @@ function ChartBase(options) {
     self.trackY = function(d, i) { 
         return (d.track * self.style.stepHeight) + (d.track * self.style.padding); 
     };
+
+    self.textTrackY = function(d, i) {
+        return self.trackY(d, i) + 20;
+    };
+
+    self.stepsTransform = function(d) {
+        var y = (d.track * self.style.stepHeight) + (d.track * self.style.padding);
+        var transform = 'translate({0}, {1})'.f(self.scale.x(d.start), y);
+        return transform;
+    };
     
     // used for main week animations
     self.defaultTransform = function(d) {
         return 'translate({0}, {1})'.f(self.stepstart(d), self.style.height - self.style.timelineHeight);
     };
 
-    self.generateWeekBoxes = function() {
+    self.generateWeekbox = function() {
         var weekElm = this
             .append('g')
             .attr('class', 'week-box')
@@ -192,13 +207,14 @@ function ChartBase(options) {
             .text('M T O T F L S');
     };
     
-    self.generateMonthBoxes = function() {
+    self.generateMonthbox = function() {
         var monthElm = this
             .append('g')
             .attr('class', 'month-box')
             .attr('transform', self.defaultTransform);
 
-        monthElm.append('rect')
+        monthElm
+            .append('rect')
             .attr('class', 'background')
             .attr('width', self.timelineStepwidth)
             .attr('height', self.style.timelineHeight)
@@ -218,24 +234,24 @@ function ChartBase(options) {
             .attr('y', 48)
             .text(self.yearText);
     };
-    
-    self.domainToggle = function() {
-        var domain = self.scale.x.domain();
-        var start = moment(domain[0]);
-        var end = moment(domain[1]);
-        var domainIsWeeks = true;
-        if (end.diff(start, 'days') < 40) { // week mode
-            domainIsWeeks = false;
-            var currentMid = start.add('days', 14);
-            var newStart = moment(currentMid).add('months', -2);
-            var newEnd = moment(newStart).add('days', self.monthInDays);
-        } else {
-            var currentMid = start.add('months', 2);
-            var newStart = moment(currentMid).add('weeks', -2);
-            var newEnd = moment(newStart).add('weeks', 4);
-        }
 
-        self.setWeeks(domainIsWeeks);
-        self.scale.x.domain([newStart.toDate(), newEnd.toDate()]);
+    self.generateStepElm = function() {
+        this.attr('class', 'step-box')
+            .attr('transform', self.stepsTransform);
+
+        this
+            .append('rect')
+            .attr('track', function(d) { return d.track; })
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', self.stepwidth)
+            .attr('height', self.style.stepHeight)
+            .attr('fill', function(d) { return d.color; });
+
+        this.append('text')
+            .attr('x', 10)
+            .attr('y', 21)
+            .text(function(d) { return d.label; });
     };
+
 }
