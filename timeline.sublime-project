@@ -3,7 +3,7 @@
     [
         {
             "file_include_patterns": ["*.js", "*.json", "*.html", "*.sublime-project"],
-            "folder_exclude_patterns": ["*"],
+            "folder_exclude_patterns": ["fonts"],
             "path": "."
         }
     ],

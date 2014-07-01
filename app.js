@@ -62,7 +62,6 @@ var Chart = function(trackdata, elmid, tracknr) {
             var midweek = moment(start).hours(14*24);
             var activeIndex = -1;
             for(var i = 0; i < activeTrack.data.length; i++) {
-                // attempt some caching
                 if (!midweek.isBefore(activeTrack.data[i].startM) &&
                     midweek.isBefore(activeTrack.data[i].endM)) {
                     activeIndex = i;
@@ -100,7 +99,7 @@ var Chart = function(trackdata, elmid, tracknr) {
         var data = activeTrack && activeTrack.data || [];
         var idx = getItemIndexByDate(data, midDate) + (scrolledUp ? 1 : -1);
         
-        if (activeTrack && idx >= 0 && idx < activeTrack.data.length) {
+        if (activeTrack && idx >= 0 && idx < data.length) {
             // shift to focus on next/previous item in focused track
             var newItem = activeTrack.data[idx];
             var newStart = moment(xScale.invert((xScale(newItem.start) + xScale(newItem.end)) / 2));
