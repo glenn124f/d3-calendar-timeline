@@ -169,6 +169,8 @@ function ChartBase(options) {
         var transform = 'translate({0}, {1})'.f(self.scale.x(d.start), y);
         return transform;
     };
+
+
     
     // used for main week animations
     self.defaultTransform = function(d) {
@@ -235,12 +237,36 @@ function ChartBase(options) {
             .text(self.yearText);
     };
 
-    self.generateStepElm = function() {
-        this.attr('class', 'step-box')
-            .attr('transform', self.stepsTransform);
+    var clipIds = 0;
+    self.stepTextDisplay = function(d) {
+        return d.endM.diff(d.startM, 'days') < 2 ? 'none' : 'block';
+    };
 
-        this
+    self.stepTextDisplayInv = function(d) {
+        return d.endM.diff(d.startM, 'days') < 2 ? 'block' : 'none';
+    };
+
+    self.generateStepElm = function() {
+        // for clipping the text
+        this.append('defs')
+            .append('clipPath')
+            .attr('id', function(d) {
+                d.clipPathId = clipIds++;
+                return 'step-clip-' + d.clipPathId;
+            })
             .append('rect')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', self.stepwidth)
+            .attr('height', self.style.stepHeight);
+
+        this.attr('class', 'step-box')
+            .attr('transform', self.stepsTransform)
+            .attr('clip-path', function(d) {
+                return 'url(#step-clip-{0})'.f(d.clipPathId);
+            });
+
+        this.append('rect')
             .attr('track', function(d) { return d.track; })
             .attr('x', 0)
             .attr('y', 0)
@@ -249,9 +275,18 @@ function ChartBase(options) {
             .attr('fill', function(d) { return d.color; });
 
         this.append('text')
+            .attr('class', 'label')
             .attr('x', 10)
             .attr('y', 21)
+            .style('display', self.stepTextDisplay)
             .text(function(d) { return d.label; });
+
+        this.append('text')
+            .attr('class', 'icon')
+            .attr('x', 10)
+            .attr('y', 24)
+            .style('display', self.stepTextDisplayInv)
+            .text('\ue319');
     };
 
 }
