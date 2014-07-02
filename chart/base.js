@@ -145,9 +145,9 @@ function ChartBase(options) {
     self.midDate = function(start, end) {
         var s = start.isAfter ? start : moment(start);
         var e = end.isAfter ? end : moment(end);
-        var diff = e.diff(s, 'days') / 2;
+        var diff = e.diff(s, 'hours') / 2;
         // this always adds whole number of days
-        return s.add('days', diff);
+        return s.add('hours', diff);
     };
 
     self.updateActiveStep = function() {
@@ -166,7 +166,6 @@ function ChartBase(options) {
             }
             if (item) {
                 self.state.activeStep = item;
-                console.log('active step', item.label)
             }
         }
     };

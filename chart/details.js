@@ -15,7 +15,6 @@ function ChartDetails(options) {
     var stepClickHandler = function(d) {
         // render the focused path first
         bindDetails(d, 'current');
-        self.updateDetails({duration: 1, step: d});
         var tdata = [];
         for (var i = 0; i < options.data.length; i++) {
             if (options.data[i].track === d.track) {
@@ -24,16 +23,14 @@ function ChartDetails(options) {
         }
         self.state.activeTrack = { nr: d.track, data: tdata };
         var x = self.scale.x;
-        var midstep = moment(x.invert((x(d.start) + x(d.end)) / 2));
-        var domain = x.domain();
+        var midstep = self.midDate(d.start, d.end);
         var start = midstep.add('weeks', -2);
         var end = moment(start).add('weeks', 4);
         var isMonths = !self.isWeeks();
         x.domain([start.toDate(), end.toDate()]);
         self.setWeeks(true);
+        self.update({type: isMonths ? 'zoom-in-details' : 'details', duration: 500 });
         requestAnimationFrame(function() {
-            self.update({type: isMonths ? 'zoom-in-details' : 'details', duration: 500 });
-            self.updateDetails({});
         });
     };
 
@@ -115,9 +112,10 @@ function ChartDetails(options) {
             .text('\ue198')
             .html('&#xe198; <title>Luk detaljevisning</title>')
             .on('click', function() {
+                var prevTrackNr = self.state.activeTrack.nr;
                 self.state.activeTrack = null;
                 self.state.activeStep = null;
-                self.update({});
+                self.update({type: 'close', nr: prevTrackNr});
             });
     };
 
