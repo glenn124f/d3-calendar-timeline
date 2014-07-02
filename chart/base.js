@@ -255,21 +255,17 @@ function ChartBase(options) {
                 return 'step-clip-' + d.clipPathId;
             })
             .append('rect')
-            .attr('x', 0)
-            .attr('y', 0)
             .attr('width', self.stepwidth)
             .attr('height', self.style.stepHeight);
 
         this.attr('class', 'step-box')
+            .attr('track', function(d) { return d.track; })
             .attr('transform', self.stepsTransform)
             .attr('clip-path', function(d) {
                 return 'url(#step-clip-{0})'.f(d.clipPathId);
             });
 
         this.append('rect')
-            .attr('track', function(d) { return d.track; })
-            .attr('x', 0)
-            .attr('y', 0)
             .attr('width', self.stepwidth)
             .attr('height', self.style.stepHeight)
             .attr('fill', function(d) { return d.color; });

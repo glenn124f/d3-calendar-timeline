@@ -104,7 +104,6 @@ function ChartTimeline(options) {
 
     };
 
-
     self.constructTimelineUi = function() {
         // tracks data
         self.svg.steps = self.svg.scrollbox.selectAll('g.step')
