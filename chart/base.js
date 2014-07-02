@@ -19,8 +19,8 @@ function ChartBase(options) {
         initialX: null
     };
 
-    var weekStart = moment().isoWeekday(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('days', -7);
-    var monthStart = moment().date(1).hours(0).minutes(0).seconds(0).milliseconds(0).add('months', -1);
+    var weekStart = moment().startOf('week').add('days', -7);
+    var monthStart = moment().startOf('month').add('months', -1);
 
     // 0:weeks, 1:months
     self.domainDefaults = {
@@ -99,9 +99,9 @@ function ChartBase(options) {
         var domainUnit = months ? 'months' : 'weeks';
         var start = moment(current[0]);
         if(!months) {
-            start.isoWeekday(1).hours(0).minutes(0).seconds(0).add('weeks', -padding);
+            start.startOf('week').add('weeks', -padding);
         } else {
-            start.date(1).hours(0).minutes(0).seconds(0).add('months', -padding);
+            start.startOf('month').add('months', -padding);
         }
         if (ticks && !months) {
             start.add('weeks', -padding);
@@ -119,6 +119,26 @@ function ChartBase(options) {
             added++;
         }
         return units;
+    };
+
+    self.middleDate = function(start, end) {
+
+
+        
+    };
+
+    self.updateActiveStep = function() {
+        var t = self.state.activeTrack;
+        if (t) {
+
+            var item = null;
+            for(var i = 0; i < t.data.length; i++) {
+                if (start.isAfter())
+                var item = t.data[i];
+
+            }
+
+        }
     };
 
     self.weeknrText = function(d) { 
@@ -286,7 +306,7 @@ function ChartBase(options) {
             .attr('width', self.stepwidth)
             .attr('height', 2)
             .attr('y', self.style.stepHeight + 2);
-            
+
         this.append('text')
             .attr('class', 'label')
             .attr('x', 10)
