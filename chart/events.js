@@ -89,7 +89,7 @@ function ChartEvents(options) {
         self.update({});
     };
 
-    self.constructEventsElm = function() {
+    self.constructEventsUi = function() {
         self.svg.root.on('mousewheel', scrollHandler);
 
         // rect that handles dragging
@@ -122,14 +122,5 @@ function ChartEvents(options) {
             .html(htmls.reset)
             .on('click', self.iconResetClick);
     };
-
-    // start building elements
-    self.constructTimelineSvg();
-    self.constructEventsElm();
-    // run once to draw initial dynamic data (timeline)
-    self.update({type: 'render'});
-
 }
 ChartEvents.prototype = Object.create(ChartTimeline.prototype);
-
-var chart = new ChartEvents({elmId: 'calendar', data: generateData()});
