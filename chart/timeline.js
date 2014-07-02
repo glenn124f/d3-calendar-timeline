@@ -96,12 +96,12 @@ function ChartTimeline(options) {
         // main step animations. use filters to implement conditional animations
 
         var trackNr = self.state.activeTrack && self.state.activeTrack.nr;
-        var trackDefined = typeof trackNr === 'number';
+        var activeDefined = typeof trackNr === 'number';
         var trackFilter = '[track="{0}"]'.f(trackNr);
         var filter = {
-            active: trackDefined ? trackFilter : ':not(*)',
-            others: trackDefined ? ':not({0})'.f(trackFilter) : ':not(*)',
-            all: trackDefined ? ':not(*)' : '*'
+            active: activeDefined ? trackFilter : ':not(*)',
+            others: activeDefined ? ':not({0})'.f(trackFilter) : ':not(*)',
+            all: activeDefined ? ':not(*)' : '*'
         };
         
         var steps = self.svg.steps

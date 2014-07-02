@@ -267,7 +267,7 @@ function ChartBase(options) {
             })
             .append('rect')
             .attr('width', self.stepwidth)
-            .attr('height', self.style.stepHeight);
+            .attr('height', self.style.stepHeight * 10); // dont clip downwards
 
         this.attr('class', 'step-box')
             .attr('track', function(d) { return d.track; })
@@ -281,6 +281,12 @@ function ChartBase(options) {
             .attr('height', self.style.stepHeight)
             .attr('fill', function(d) { return d.color; });
 
+        this.append('rect')
+            .attr('class', 'highlight')
+            .attr('width', self.stepwidth)
+            .attr('height', 2)
+            .attr('y', self.style.stepHeight + 2);
+            
         this.append('text')
             .attr('class', 'label')
             .attr('x', 10)

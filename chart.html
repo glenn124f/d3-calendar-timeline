@@ -59,7 +59,25 @@
     visibility: hidden;
 }
 
+.step-box * {
+    cursor: pointer;
+}
+
+.step-box rect.highlight {
+    opacity: 0;
+    fill: #222;
+    transition: opacity .15s ease-in-out;
+    -moz-transition: opacity .15s ease-in-out;
+    -webkit-transition: opacity .15s ease-in-out;
+}
+
+.step-box:hover rect.highlight,
+.step-box.focused rect.highlight {
+    opacity: 1;
+}
+
 .step-box text.label {
+    display: none;
     font-family: sans-serif;
 }
 
