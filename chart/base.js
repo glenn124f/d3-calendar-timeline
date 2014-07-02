@@ -76,6 +76,7 @@ function ChartBase(options) {
 
     // main animation.
     self.update = function(options) {
+        self.updateDetails(options);
         self.updateTimeline(options);
     };
 

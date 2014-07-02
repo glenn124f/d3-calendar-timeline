@@ -62,7 +62,31 @@ function ChartDetails(options) {
     var bottomY = upperY + self.style.stepHeight;
     
     self.updateDetails = function(options) {
+        var active = self.state.activeTrack;
+        
+        var ic1 = self.svg.icons;
+        var ic2 = self.svg.details.select('g.details-icons');
+        var curr = self.svg.details.select('g.current');
 
+        if (options.step) {
+            var fadeIn = options.step ? ic2 : ic1; 
+            var hide = options.step ? ic1 : ic2;
+            hide
+                .style('display', 'none');
+            fadeIn
+                .select('g.details-icons')
+                .style('opacity', 0)
+                .style('display', 'block')
+                .transition()
+                .style('opacity', 1);
+        } else {
+            var show = active ? ic2 : ic1;
+            var hide = active ? ic1 : ic2;
+            var current = active || options.step ? 'block' : 'none';
+            show.style('display', 'block');
+            hide.style('display', 'none');
+            curr.style('display', current);
+        }
     };
 
     self.constructDetailsUi = function() {
@@ -77,6 +101,24 @@ function ChartDetails(options) {
             .attr('transform', currentTransform)
             .append('g')
             .attr('class', 'dynamic');
+
+        var icons = self.svg.details
+            .append('g')
+            .attr('class', 'details-icons')
+            .attr('transform', 'translate({0}, 0)'.f(self.style.width))
+        
+        icons
+            .append('text')
+            .attr('x', -42)
+            .attr('y', self.style.iconOffset)
+            .attr('class', 'ui-icon')
+            .text('\ue198')
+            .html('&#xe198; <title>Luk detaljevisning</title>')
+            .on('click', function() {
+                self.state.activeTrack = null;
+                self.state.activeStep = null;
+                self.update({});
+            });
     };
 
     self.init();
