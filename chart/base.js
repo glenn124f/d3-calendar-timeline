@@ -7,8 +7,8 @@ function ChartBase(options) {
     self.monthInDays = 122;
     self.trackCount = 0;
     for (var i = 0; i < options.data.length; i++) {
-        if (self.trackCount < options.data[i].track) {
-            self.trackCount = options.data[i].track;
+        if (self.trackCount < options.data[i].track + 1) {
+            self.trackCount = options.data[i].track + 1;
         }
     }
 
@@ -16,6 +16,7 @@ function ChartBase(options) {
         weeks: true, // false = months
         scrolled: false,
         activeTrack: null,
+        activeStep: null,
         initialX: null
     };
 
@@ -30,12 +31,14 @@ function ChartBase(options) {
 
     self.style = {
         width: 1000,
-        height: 200,
+        height: 250,
         timelineHeight: 60,
+        timelineOffsetVert: 20,
         detailsBoxHeight: 60,
         padding: 4,
-        stepPaddingVert: 10,
-        stepHeight: 30,
+        stepsOffsetVert: 50,
+        stepPaddingVert: 5,
+        stepHeight: 35,
         iconOffset: 40,
         durationDefault: 250
     };
@@ -56,6 +59,7 @@ function ChartBase(options) {
     var weeks = scrollbox.append('g').attr('class', 'week-container');
     var months = scrollbox.append('g').attr('class', 'month-container');
     var ticks = scrollbox.append('g').attr('class', 'tick-container');
+    var details = root.append('g').attr('class', 'details-container');
     var icons = root.append('g')
         .attr('class', 'icon-container')
         .attr('transform', 'translate('+ (self.style.width) +', 0)');
@@ -66,7 +70,23 @@ function ChartBase(options) {
         weeks: weeks,
         months: months,
         ticks: ticks,
-        icons: icons
+        icons: icons,
+        details: details
+    };
+
+    // main animation.
+    self.update = function(options) {
+        self.updateTimeline(options);
+    };
+
+    // called by the first object in the prototype chain. 
+    // ensures all objects are fully parsed
+    self.init = function() {
+        // start building elements
+        self.constructTimelineUi();
+        self.constructEventsUi();
+        self.constructDetailsUi();        
+        self.update({type: 'render'});
     };
 
     self.isWeeks = function() {
@@ -121,23 +141,32 @@ function ChartBase(options) {
         return units;
     };
 
-    self.middleDate = function(start, end) {
-
-
-        
+    self.midDate = function(start, end) {
+        var s = start.isAfter ? start : moment(start);
+        var e = end.isAfter ? end : moment(end);
+        var diff = e.diff(s, 'days') / 2;
+        // this always adds whole number of days
+        return s.add('days', diff);
     };
 
     self.updateActiveStep = function() {
         var t = self.state.activeTrack;
         if (t) {
-
+            var domain = self.scale.x.domain();
+            var mid = self.midDate(domain[0], domain[1]);
             var item = null;
             for(var i = 0; i < t.data.length; i++) {
-                if (start.isAfter())
-                var item = t.data[i];
+                var s = t.data[i];
 
+                if (s.startM.isBefore(mid) && s.endM.isAfter(mid)) {
+                    item = s;
+                    break;
+                }
             }
-
+            if (item) {
+                self.state.activeStep = item;
+                console.log('active step', item.label)
+            }
         }
     };
 
@@ -182,37 +211,38 @@ function ChartBase(options) {
     self.stepweek = function(d) {
         return self.scale.x(moment(d.start).add('days', 7).toDate()) - self.scale.x(d.start) - self.style.padding;
     };
-    
-    self.trackY = function(d, i) { 
-        return (d.track * self.style.stepHeight) + (d.track * self.style.padding); 
-    };
-
-    self.textTrackY = function(d, i) {
-        return self.trackY(d, i) + 20;
-    };
 
     self.stepsTransform = function(d) {
-        var y = (d.track * self.style.stepHeight) + (d.track * self.style.stepPaddingVert);
+        var s = self.style;
+        var y = s.stepsOffsetVert + (d.track * s.stepHeight) + (d.track * s.stepPaddingVert);
         var transform = 'translate({0}, {1})'.f(self.scale.x(d.start), y);
         return transform;
     };
 
-    self.detailsTransform = function(d) {
-        var y = (self.trackCount * self.style.stepHeight) + (self.trackCount * self.style.stepPaddingVert);
-        var transform = 'translate({0}, {1})'.f(self.scale.x(d.start), y);
+    self.timelineY = function() {
+        var s = self.style;
+        var stepHeights = s.timelineOffsetVert + s.stepsOffsetVert + 
+            self.trackCount * (s.stepHeight + s.stepPaddingVert); 
+        return stepHeights;        
+    };
+
+    self.activeTransform = function(d) {
+        var s = self.style;
+        var n = self.trackCount-1;
+        var y = s.stepsOffsetVert + (n * s.stepHeight + n * s.stepPaddingVert);
+        var transform = 'translate({0}, {1})'.f(self.stepstart(d), y);
         return transform;
     };
     
-    // used for main week animations
-    self.defaultTransform = function(d) {
-        return 'translate({0}, {1})'.f(self.stepstart(d), self.style.height - self.style.timelineHeight);
+    self.timelineTransform = function(d) {
+        return 'translate({0}, {1})'.f(self.stepstart(d), self.timelineY());
     };
 
     self.generateWeekbox = function() {
         var weekElm = this
             .append('g')
             .attr('class', 'week-box')
-            .attr('transform', self.defaultTransform);
+            .attr('transform', self.timelineTransform);
 
         weekElm.append('rect')
             .attr('class', 'background')
@@ -244,7 +274,7 @@ function ChartBase(options) {
         var monthElm = this
             .append('g')
             .attr('class', 'month-box')
-            .attr('transform', self.defaultTransform);
+            .attr('transform', self.timelineTransform);
 
         monthElm
             .append('rect')
@@ -305,12 +335,12 @@ function ChartBase(options) {
             .attr('class', 'highlight')
             .attr('width', self.stepwidth)
             .attr('height', 2)
-            .attr('y', self.style.stepHeight + 2);
+            .attr('y', self.style.stepHeight);
 
         this.append('text')
             .attr('class', 'label')
             .attr('x', 10)
-            .attr('y', 21)
+            .attr('y', 23)
             .style('display', self.stepTextDisplay)
             .text(function(d) { return d.label; });
 

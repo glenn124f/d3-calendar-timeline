@@ -35,7 +35,7 @@ function ChartEvents(options) {
         var scrolledUp = d3.event.wheelDelta > 0;
         var x = self.scale.x;
         var domain = x.domain();
-        var midDate = moment(x.invert((x(domain[0]) + x(domain[1])) / 2));
+        var midDate = self.midDate(domain[0], domain[1]);
 
         var shift = (scrolledUp ? 1: -1) * (self.isWeeks() ? 4 : 10);
         var newStart = moment(domain[0]).add('days', shift);
@@ -70,8 +70,7 @@ function ChartEvents(options) {
         var start = moment(domain[0]);
         var end = moment(domain[1]);
         var isWeeks = self.isWeeks(); // going to months
-
-        var currentMid = isWeeks ? start.add('days', 14) : start.add('months', 2);
+        var currentMid = self.midDate(start, end);
         var newStart = isWeeks ? moment(currentMid).add('months', -2) : moment(currentMid).add('weeks', -2);
         var newEnd = isWeeks ? moment(newStart).add('days', self.monthInDays) : moment(newStart).add('weeks', 4);
         var cp = isWeeks ? codepoints.zoomPlus : codepoints.zoomMinus;
@@ -91,13 +90,13 @@ function ChartEvents(options) {
 
     self.constructEventsUi = function() {
         self.svg.root.on('mousewheel', scrollHandler);
-
+        var s = self.style;
         // rect that handles dragging
         self.svg.root.append('rect')
             .attr('class', 'dragbox')
-            .attr('width', self.style.width)
-            .attr('height', self.style.timelineHeight + 30)
-            .attr('y', self.style.height - self.style.timelineHeight - 15)
+            .attr('width', s.width)
+            .attr('height', s.timelineHeight + s.timelineOffsetVert)
+            .attr('y', self.timelineY() - s.timelineOffsetVert)
             .attr('fill', 'transparent')
             .call(self.dragBehavior);    
 

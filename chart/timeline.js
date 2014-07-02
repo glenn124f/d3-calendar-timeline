@@ -2,7 +2,10 @@ function ChartTimeline(options) {
     ChartBase.call(this, options);
     var self = this;
 
-    self.update = function(options) {
+    self.updateTimeline = function(options) {
+        // update active step if any
+        self.updateActiveStep();
+
         // hide/show reset icon
         self.svg.icons.selectAll('text.reset-view')
             .style('display', self.isScrolled() ? 'block' : 'none');
@@ -34,7 +37,7 @@ function ChartTimeline(options) {
             ticks.enter()
                 .append('g')
                 .attr('class', 'tick-box')
-                .attr('transform', self.defaultTransform)
+                .attr('transform', self.timelineTransform)
                 .append('text')
                 .attr('text-anchor', 'left')
                 .attr('x', 0)
@@ -48,7 +51,7 @@ function ChartTimeline(options) {
             // from months to weeks
             weeks
                 .style('display', 'block')
-                .attr('transform', self.defaultTransform)
+                .attr('transform', self.timelineTransform)
                 .style('opacity', 0) // sets up animation
                 .transition()
                 .duration(duration)
@@ -61,14 +64,14 @@ function ChartTimeline(options) {
             // from weeks to months
             months
                 .style('display', 'block')
-                .attr('transform', self.defaultTransform)
+                .attr('transform', self.timelineTransform)
                 .style('opacity', 0) // sets up animation
                 .transition()
                 .duration(duration)
                 .style('opacity', 1);
             ticks
                 .style('display', 'block')
-                .attr('transform', self.defaultTransform)
+                .attr('transform', self.timelineTransform)
                 .style('opacity', 0) // sets up animation
                 .transition()
                 .duration(duration)
@@ -81,17 +84,17 @@ function ChartTimeline(options) {
             weeks
                 .transition()
                 .duration(duration)
-                .attr('transform', self.defaultTransform);
+                .attr('transform', self.timelineTransform);
         } else {
             // months animation
             months
                 .transition()
                 .duration(duration)
-                .attr('transform', self.defaultTransform);
+                .attr('transform', self.timelineTransform);
             ticks
                 .transition()
                 .duration(duration)
-                .attr('transform', self.defaultTransform);
+                .attr('transform', self.timelineTransform);
         }
         // main step animations. use filters to implement conditional animations
 
@@ -116,14 +119,13 @@ function ChartTimeline(options) {
 
         steps
             .filter(filter.active)
-            .attr('transform', self.detailsTransform)
+            .attr('transform', self.activeTransform)
             .selectAll('rect')
             .attr('width', self.stepwidth);
 
         steps
             .filter(filter.others)
             .style('display', 'none');
-            
     };
 
     self.constructTimelineUi = function() {
