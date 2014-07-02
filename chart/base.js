@@ -119,7 +119,7 @@ function ChartBase(options) {
     };
     
     self.monthText = function(d) {
-        return moment(d.start).format('MMMM');
+        return moment(d.start).format('MMMM').toUpperCase();
     };
     
     self.yearText = function(d) {
