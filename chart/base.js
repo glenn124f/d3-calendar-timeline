@@ -5,6 +5,12 @@ function ChartBase(options) {
 
     self.elmId = options.elmId;
     self.monthInDays = 122;
+    self.trackCount = 0;
+    for (var i = 0; i < options.data.length; i++) {
+        if (self.trackCount < options.data[i].track) {
+            self.trackCount = options.data[i].track;
+        }
+    }
 
     self.state = {
         weeks: true, // false = months
@@ -28,6 +34,7 @@ function ChartBase(options) {
         timelineHeight: 60,
         detailsBoxHeight: 60,
         padding: 4,
+        stepPaddingVert: 10,
         stepHeight: 30,
         iconOffset: 40,
         durationDefault: 250
@@ -165,12 +172,16 @@ function ChartBase(options) {
     };
 
     self.stepsTransform = function(d) {
-        var y = (d.track * self.style.stepHeight) + (d.track * self.style.padding);
+        var y = (d.track * self.style.stepHeight) + (d.track * self.style.stepPaddingVert);
         var transform = 'translate({0}, {1})'.f(self.scale.x(d.start), y);
         return transform;
     };
 
-
+    self.detailsTransform = function(d) {
+        var y = (self.trackCount * self.style.stepHeight) + (self.trackCount * self.style.stepPaddingVert);
+        var transform = 'translate({0}, {1})'.f(self.scale.x(d.start), y);
+        return transform;
+    };
     
     // used for main week animations
     self.defaultTransform = function(d) {
@@ -237,7 +248,6 @@ function ChartBase(options) {
             .text(self.yearText);
     };
 
-    var clipIds = 0;
     self.stepTextDisplay = function(d) {
         return d.endM.diff(d.startM, 'days') < 2 ? 'none' : 'block';
     };
@@ -246,6 +256,7 @@ function ChartBase(options) {
         return d.endM.diff(d.startM, 'days') < 2 ? 'block' : 'none';
     };
 
+    var clipIds = 0;
     self.generateStepElm = function() {
         // for clipping the text
         this.append('defs')

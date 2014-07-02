@@ -93,15 +93,37 @@ function ChartTimeline(options) {
                 .duration(duration)
                 .attr('transform', self.defaultTransform);
         }
+        // main step animations. use filters to implement conditional animations
 
-        // main step animation. updates x axis + width accoding to domain
+        var trackNr = self.state.activeTrack && self.state.activeTrack.nr;
+        var trackDefined = typeof trackNr === 'number';
+        var trackFilter = '[track="{0}"]'.f(trackNr);
+        var filter = {
+            active: trackDefined ? trackFilter : ':not(*)',
+            others: trackDefined ? ':not({0})'.f(trackFilter) : ':not(*)',
+            all: trackDefined ? ':not(*)' : '*'
+        };
+        
         var steps = self.svg.steps
             .transition()
-            .duration(duration)
+            .duration(duration);
+
+        steps
+            .filter(filter.all)
             .attr('transform', self.stepsTransform)
             .selectAll('rect')
             .attr('width', self.stepwidth);
 
+        steps
+            .filter(filter.active)
+            .attr('transform', self.detailsTransform)
+            .selectAll('rect')
+            .attr('width', self.stepwidth);
+
+        steps
+            .filter(filter.others)
+            .style('display', 'none');
+            
     };
 
     self.constructTimelineUi = function() {
