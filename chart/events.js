@@ -38,6 +38,7 @@ function ChartEvents(options) {
         var midDate = self.midDate(domain[0], domain[1]);
 
         var shift = (scrolledUp ? 1: -1) * (self.isWeeks() ? 4 : 10);
+        shift = self.state.activeStep ? shift / 5 : shift;
         var newStart = moment(domain[0]).add('days', shift);
         var newEnd = moment(newStart);
         if (self.isWeeks()) {
@@ -58,10 +59,10 @@ function ChartEvents(options) {
         .on('dragend', dragHandler);
 
     // code points for IE9 only
-    var codepoints = { zoomPlus: '\ue238', zoomMinus: '\ue237', reset: '\ue435' };
+    var codepoints = { zoomPlus: '\ue237', zoomMinus: '\ue238', reset: '\ue435' };
     var htmls = {
-        zoomMinus: '&#xe238; <title>Månedsvisning</title>',
         zoomPlus: '&#xe237; <title>Ugevisning</title>',
+        zoomMinus: '&#xe238; <title>Månedsvisning</title>',
         reset: '&#xe435; <title>Gå til til dags dato</title>'
     };
 
