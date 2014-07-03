@@ -1,6 +1,9 @@
 function ChartTimeline(options) {
     ChartBase.call(this, options);
     var self = this;
+    
+    var todayMoment = moment().startOf('day');
+    var weekMoment = moment().startOf('week');
 
     self.updateTimeline = function(options) {
         // update active step if any
@@ -39,7 +42,7 @@ function ChartTimeline(options) {
                 .attr('class', 'tick-box')
                 .attr('transform', self.timelineTransform)
                 .append('text')
-                .attr('text-anchor', 'left')
+                .attr('text-anchor', 'middle')
                 .attr('x', 0)
                 .attr('y', -5)
                 .text(function(d) {
@@ -47,7 +50,7 @@ function ChartTimeline(options) {
                 });
             ticks.exit().remove();
         }
-        if (options.type.indexOf('zoom-in') === 0 && self.isWeeks()) {
+        if (options.type && options.type.indexOf('zoom-in') === 0 && self.isWeeks()) {
             // from months to weeks
             weeks
                 .style('display', 'block')
@@ -60,6 +63,13 @@ function ChartTimeline(options) {
                 .style('display', 'none');
             ticks
                 .style('display', 'none');
+
+            // indicators
+            self.svg.scrollbox.select('circle.today-indicator')
+                .style('display', 'block');
+            self.svg.scrollbox.select('circle.week-indicator')
+                .style('display', 'none');
+
         } else if (options.type === 'zoom-out') {
             // from weeks to months
             months
@@ -79,6 +89,13 @@ function ChartTimeline(options) {
 
             weeks
                 .style('display', 'none');
+
+            // indicators
+            self.svg.scrollbox.select('circle.today-indicator')
+                .style('display', 'none');
+            self.svg.scrollbox.select('circle.week-indicator')
+                .style('display', 'block');
+
         } else if (self.isWeeks()) {
             // weeks animation
             weeks
@@ -139,9 +156,27 @@ function ChartTimeline(options) {
             .delay(duration)
             // .attr('transform', self.stepsTransform)            
             .style('opacity', 1);
+
+        // update the now circle
+        self.svg.scrollbox
+            .transition()
+            .duration(duration)
+            .select('circle.now-indicator')
+            .attr('cx', function() {
+                var p = self.isWeeks();
+                return self.scale.x(p ? todayMoment : weekMoment) + (p?2:0);
+            });
     };
 
     self.constructTimelineUi = function() {
+        
+        // now indicator
+        self.svg.scrollbox
+            .append('circle')
+            .attr('class', 'now-indicator')
+            .attr('cy', self.timelineY() - 10)
+            .attr('r', 14);
+
         // tracks data
         self.svg.steps = self.svg.scrollbox.selectAll('g.step')
             .data(options.data)

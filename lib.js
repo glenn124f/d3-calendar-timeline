@@ -25,7 +25,49 @@ if (!String.prototype.format) {
   };
 }
 
-var generateData = function() {
+var staticData = function() {
+    var today = moment().startOf('day');
+    var nextMonday = moment().add('days', 14).startOf('week');
+    console.log('staticdata');
+    console.log(today.toString());
+    console.log(nextMonday.toString());
+    var getData = function(d, label) {
+        return [
+            {
+                start: moment(d).toDate(),
+                startM: moment(d),
+                end: moment(d).add('days', 3).toDate(), 
+                endM: moment(d).add('days', 3),
+                color: 'tomato',
+                label: label,
+                track: 0
+            },
+            {
+                start: moment(d).add('days', -1).toDate(),
+                startM: moment(d).add('days', -1),
+                end: moment(d).add('days', 1).toDate(), 
+                endM: moment(d).add('days', 1),
+                color: 'goldenrod',
+                label: 'brownish',
+                track: 1
+            },
+            {
+                start: moment(d).add('days', -2).toDate(),
+                startM: moment(d).add('days', -2),
+                end: moment(d).add('days', -1).toDate(), 
+                endM: moment(d).add('days', -1),
+                color: 'springgreen',
+                label: 'greenish',
+                track: 2
+            }
+        ];
+    };
+
+    var data = getData(today, 'today').concat(getData(nextMonday, 'a monday'));
+    return data;
+};
+
+var generateData = function(static) {
     function randomColor(brightness){
       function randomChannel(brightness){
         var r = 255-brightness;
@@ -35,6 +77,11 @@ var generateData = function() {
       }
       return '#' + randomChannel(brightness) + randomChannel(brightness) + randomChannel(brightness);
     }
+
+    if (static) {
+        return staticData();
+    }
+
     // lots of fudging ...
     var starts = [
         moment().add('days', -Math.round(Math.random()*100)),

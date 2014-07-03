@@ -5,6 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta http-equiv="content-type" content="text/html; charset=utf8">
 <script src="moment.js"></script>
+<script src="moment.da.js"></script>
 <script charset="utf-8" src="d3.js"></script>
 <style>
 
@@ -108,10 +109,9 @@ svg[dragging="true"] .dragbox {
     font-size: 80%;
 }
 
-.week-box text.days {
+.week-box text.day {
     font-family: sans-serif;
     font-size: 80%;
-    letter-spacing: 0.91em; /* kinda hacky */ 
 }
 
 .tick-box text {
@@ -123,6 +123,12 @@ svg[dragging="true"] .dragbox {
     fill: none;
     stroke: red;
     stroke-width: 2px;
+}
+
+.now-indicator {
+    fill: none;
+    stroke: greenyellow;
+    stroke-width: 5px;
 }
 
 #calendar {

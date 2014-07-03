@@ -123,4 +123,5 @@ function ChartDetails(options) {
 }
 ChartDetails.prototype = Object.create(ChartEvents.prototype);
 
-var chart = new ChartDetails({elmId: 'calendar', data: generateData()});
+moment.lang('da');
+var chart = new ChartDetails({elmId: 'calendar', data: generateData(true)});

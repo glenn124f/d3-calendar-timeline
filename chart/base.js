@@ -86,7 +86,7 @@ function ChartBase(options) {
         // start building elements
         self.constructTimelineUi();
         self.constructEventsUi();
-        self.constructDetailsUi();        
+        self.constructDetailsUi();
         self.update({type: 'render'});
     };
 
@@ -264,10 +264,15 @@ function ChartBase(options) {
             .attr('y', 48)
             .text(self.datespanText);
 
-        weekElm.append('text')
-            .attr('class', 'days')
+        var days = 'M T O T F L S'.split(' ');
+        var dayoffset = function(d, i) { return 2 + i*35.5; };
+        weekElm.selectAll('text.days').data(days).enter()
+            .append('text')
+            .attr('class', 'day')
             .attr('y', - 5)
-            .text('M T O T F L S');
+            .attr('text-anchor', 'middle')
+            .attr('x', dayoffset)
+            .text(function(d) { return d; });
     };
     
     self.generateMonthbox = function() {
